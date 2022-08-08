@@ -1,0 +1,931 @@
+#include "parser.h"
+#include "lexer.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <assert.h>
+
+struct Parser_ {
+	Lexer *lexer;
+};
+
+static void parser_init(Parser *p, Lexer *l)
+{
+	p->lexer = l;
+}
+
+static void parser_free(Parser *p)
+{
+}
+
+Parser *parser_new(Lexer *l)
+{
+	Parser *self = malloc(sizeof(Parser));
+	parser_init(self, l);
+	return self;
+}
+
+void parser_delete(Parser *p)
+{
+	parser_free(p);
+	free(p);
+}
+
+#define P lexer_peek(p->lexer)
+#define PS lexer_peek_string(p->lexer)
+#define PI lexer_peek_int(p->lexer)
+#define PC lexer_peek_char(p->lexer)
+#define N lexer_next(p->lexer)
+#define F_(cond, errval, ...) do { if (!(cond)) { __VA_ARGS__; return errval; } } while (0)
+#define F(cond, ...) F_(cond, 0, ## __VA_ARGS__)
+
+static int match(Parser *p, int token)
+{
+	if (P == token) {
+		N;
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+static Expr *parse_parentheses_post(Parser *p)
+{
+	Expr *e;
+	F(e = parse_expr(p));
+	F(match(p, ')'), tree_free(e));
+	return exprEXPR(e);
+}
+
+static Expr *parse_primary_expr(Parser *p)
+{
+	switch (P) {
+	case TOK_IDENT:
+		N; return exprIDENT(strdup(PS));
+	case TOK_INT_CST:
+		N; return exprINT_CST(PI);
+	case TOK_CHAR_CST:
+		N; return exprCHAR_CST(PC);
+	case TOK_STRING_CST:
+		N; return exprSTRING_CST(strdup(PS));
+	case '(':
+		N; return parse_parentheses_post(p);
+	default:
+		return NULL;
+	}
+}
+
+static Expr *parse_assignment_expr(Parser *p);
+static Expr *parse_multiplicative_expr_post(Parser *p, Expr *e, int prec);
+static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
+{
+	if (prec < 2)
+		return e;
+
+	while (1) {
+		switch (P) {
+		case '[': {
+			N;
+			Expr *i;
+			F(i = parse_expr(p));
+			F(match(p, ']'), tree_free(i));
+			e = exprBOP(EXPR_OP_IDX, e, i);
+			break;
+		}
+		case '(': {
+			N;
+			ExprCALL *n = exprCALL(e);
+			if (P == ')') {
+				N;
+				return &n->h;
+			} else {
+				Expr *arg;
+				F(arg = parse_assignment_expr(p), tree_free(&n->h));
+				exprCALL_append(n, arg);
+				while (P == ',') {
+					N;
+					F(arg = parse_assignment_expr(p), tree_free(&n->h));
+					exprCALL_append(n, arg);
+				}
+				F(match(p, ')'), tree_free(&n->h));
+				return &n->h;
+			}
+			break;
+		}
+		case '.': {
+			N;
+			if (P == TOK_IDENT) {
+				N; e = exprMEM(e, strdup(PS));
+			} else {
+				return NULL;
+			}
+			break;
+		}
+		case TOK_PMEM: { // -
+			N;
+			if (P == TOK_IDENT) {
+				N; e = exprPMEM(e, strdup(PS));
+			} else {
+				return NULL;
+			}
+			break;
+		}
+		case TOK_INC: {
+			N; e = exprUOP(EXPR_OP_POSTINC, e);
+			break;
+		}
+		case TOK_DEC: {
+			N; e = exprUOP(EXPR_OP_POSTDEC, e);
+			break;
+		}
+		default:
+			return parse_multiplicative_expr_post(p, e, prec); // XXX
+		}
+	}
+}
+
+static Expr *applyUOP(ExprUnOp op, Expr *e)
+{
+	if (e)
+		return exprUOP(op, e);
+	return NULL;
+}
+
+static Expr *parse_unary_expr(Parser *p)
+{
+	Expr *e = parse_primary_expr(p);
+	if (e)
+		return parse_postfix_expr_post(p, e, 3);
+
+	switch (P) {
+	case TOK_INC:
+		N; return applyUOP(EXPR_OP_PREINC, parse_unary_expr(p));
+	case TOK_DEC:
+		N; return applyUOP(EXPR_OP_PREDEC, parse_unary_expr(p));
+	case '!':
+		N; return applyUOP(EXPR_OP_NOT, parse_unary_expr(p));
+	case '~':
+		N; return applyUOP(EXPR_OP_BNOT, parse_unary_expr(p));
+	case '+':
+		N; return applyUOP(EXPR_OP_POS, parse_unary_expr(p));
+	case '-':
+		N; return applyUOP(EXPR_OP_NEG, parse_unary_expr(p));
+	case '&':
+		N; return applyUOP(EXPR_OP_ADDROF, parse_unary_expr(p));
+	case '*':
+		N; return applyUOP(EXPR_OP_DEREF, parse_unary_expr(p));
+	case TOK_SIZEOF:
+		N;
+		if (P == '(') {
+			N;
+			Type *t = parse_type(p);
+			if (t) {
+				F(match(p, ')'), tree_free(t));
+				return exprSIZEOFT(t);
+			}
+			Expr *e;
+			F(e = parse_postfix_expr_post(p, parse_parentheses_post(p), 3));
+			return exprSIZEOF(e);
+		} else {
+			Expr *e;
+			F(e = parse_unary_expr(p));
+			return exprSIZEOF(e);
+		}
+	}
+	return NULL;
+}
+
+static Expr *parse_cast_expr(Parser *p)
+{
+	if (P =='(') {
+		N;
+		Type *t = parse_type(p);
+		if (t) {
+			F(match(p, ')'), tree_free(t));
+			if (P == '{') {
+				// TODO: ( type-name ) { init list }
+				abort();
+			} else {
+				Expr *e;
+				F(e = parse_cast_expr(p), tree_free(t));
+				return exprCAST(t, e);
+			}
+		}
+		Expr *e = parse_parentheses_post(p);
+		return parse_postfix_expr_post(p, e, 4);
+	}
+
+	Expr *e = parse_unary_expr(p);
+	if (e) return e;
+}
+
+static Expr *applyBOP(ExprBinOp op, Expr *a, Expr *b)
+{
+	if (b) {
+		return exprBOP(op, a, b);
+	} else {
+		tree_free(a);
+		return NULL;
+	}
+}
+
+static Expr *parse_primary_expr(Parser *p);        // 1
+static Expr *parse_postfix_expr(Parser *p);        // 2
+static Expr *parse_unary_expr(Parser *p);          // 3
+static Expr *parse_cast_expr(Parser *p);           // 4
+
+static Expr *parse_multiplicative_expr(Parser *p); // 5
+static Expr *parse_additive_expr(Parser *p);       // 6
+static Expr *parse_shift_expr(Parser *p);          // 7
+static Expr *parse_relational_expr(Parser *p);     // 8
+static Expr *parse_equality_expr(Parser *p);       // 9
+static Expr *parse_band_expr(Parser *p);           // 10
+static Expr *parse_bxor_expr(Parser *p);           // 11
+static Expr *parse_bor_expr(Parser *p);            // 12
+static Expr *parse_and_expr(Parser *p);            // 13
+static Expr *parse_or_expr(Parser *p);             // 14
+static Expr *parse_conditional_expr(Parser *p);    // 15
+static Expr *parse_assignment_expr(Parser *p);     // 16
+
+static Expr *parse_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 17)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case ',':
+			N; e = applyBOP(EXPR_OP_COMMA, e, parse_assignment_expr(p)); break;
+		default:
+			return e;
+		}
+	}
+	return e;
+}
+
+static Expr *parse_assignment_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 16)
+		return e;
+
+	if (!e)
+		return NULL;
+
+	switch (P) {
+	case '=':
+		N; return applyBOP(EXPR_OP_ASSIGN, e, parse_assignment_expr(p));
+	case TOK_ASSIGNMUL:
+		N; return applyBOP(EXPR_OP_ASSIGNMUL, e, parse_assignment_expr(p));
+	case TOK_ASSIGNDIV:
+		N; return applyBOP(EXPR_OP_ASSIGNDIV, e, parse_assignment_expr(p));
+	case TOK_ASSIGNMOD:
+		N; return applyBOP(EXPR_OP_ASSIGNMOD, e, parse_assignment_expr(p));
+	case TOK_ASSIGNADD:
+		N; return applyBOP(EXPR_OP_ASSIGNADD, e, parse_assignment_expr(p));
+	case TOK_ASSIGNSUB:
+		N; return applyBOP(EXPR_OP_ASSIGNSUB, e, parse_assignment_expr(p));
+	case TOK_ASSIGNBSHL:
+		N; return applyBOP(EXPR_OP_ASSIGNBSHL, e, parse_assignment_expr(p));
+	case TOK_ASSIGNBSHR:
+		N; return applyBOP(EXPR_OP_ASSIGNBSHR, e, parse_assignment_expr(p));
+	case TOK_ASSIGNBAND:
+		N; return applyBOP(EXPR_OP_ASSIGNBAND, e, parse_assignment_expr(p));
+	case TOK_ASSIGNBXOR:
+		N; return applyBOP(EXPR_OP_ASSIGNBXOR, e, parse_assignment_expr(p));
+	case TOK_ASSIGNBOR:
+		N; return applyBOP(EXPR_OP_ASSIGNBOR, e, parse_assignment_expr(p));
+	default:
+		return parse_expr_post(p, e, prec);
+	}
+}
+
+static Expr *parse_conditional_expr_post(Parser *p, Expr *cond, int prec)
+{
+	if (prec < 15)
+		return cond;
+
+	if (cond) {
+		if (P == '?') {
+			N;
+			Expr *e1, *e2;
+			F(e1 = parse_expr(p), tree_free(cond));
+			F(match(p, ':'), tree_free(cond), tree_free(e1));
+			F(e2 = parse_conditional_expr(p), tree_free(cond), tree_free(e1));
+			return exprCOND(cond, e1, e2);
+		} else {
+			return parse_assignment_expr_post(p, cond, prec);
+		}
+	}
+	return NULL;
+}
+
+static Expr *parse_or_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 14)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case TOK_OR:
+			N; e = applyBOP(EXPR_OP_OR, e, parse_equality_expr(p)); break;
+		default:
+			return parse_conditional_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_and_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 13)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case TOK_AND:
+			N; e = applyBOP(EXPR_OP_AND, e, parse_bor_expr(p)); break;
+		default:
+			return parse_or_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_bor_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 12)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case '|':
+			N; e = applyBOP(EXPR_OP_BOR, e, parse_bxor_expr(p)); break;
+		default:
+			return parse_and_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_bxor_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 11)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case '^':
+			N; e = applyBOP(EXPR_OP_BXOR, e, parse_band_expr(p)); break;
+		default:
+			return parse_bor_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_band_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 10)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case '&':
+			N; e = applyBOP(EXPR_OP_BAND, e, parse_equality_expr(p)); break;
+		default:
+			return parse_bxor_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_equality_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 9)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case TOK_EQ:
+			N; e = applyBOP(EXPR_OP_EQ, e, parse_relational_expr(p)); break;
+		case TOK_NEQ:
+			N; e = applyBOP(EXPR_OP_NEQ, e, parse_relational_expr(p)); break;
+		default:
+			return parse_band_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_relational_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 8)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case '<':
+			N; e = applyBOP(EXPR_OP_LT, e, parse_shift_expr(p)); break;
+		case '>':
+			N; e = applyBOP(EXPR_OP_GT, e, parse_shift_expr(p)); break;
+		case TOK_LE:
+			N; e = applyBOP(EXPR_OP_LE, e, parse_shift_expr(p)); break;
+		case TOK_GE:
+			N; e = applyBOP(EXPR_OP_GE, e, parse_shift_expr(p)); break;
+		default:
+			return parse_equality_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_shift_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 7)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case TOK_BSHL:
+			N; e = applyBOP(EXPR_OP_BSHL, e, parse_additive_expr(p)); break;
+		case TOK_BSHR:
+			N; e = applyBOP(EXPR_OP_BSHR, e, parse_additive_expr(p)); break;
+		default:
+			return parse_relational_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_additive_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 6)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case '+':
+			N; e = applyBOP(EXPR_OP_ADD, e, parse_multiplicative_expr(p)); break;
+		case '-':
+			N; e = applyBOP(EXPR_OP_SUB, e, parse_multiplicative_expr(p)); break;
+		default:
+			return parse_shift_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_multiplicative_expr_post(Parser *p, Expr *e, int prec)
+{
+	if (prec < 5)
+		return e;
+
+	while (e) {
+		switch (P) {
+		case '*':
+			N; e = applyBOP(EXPR_OP_MUL, e, parse_cast_expr(p)); break;
+		case '/':
+			N; e = applyBOP(EXPR_OP_DIV, e, parse_cast_expr(p)); break;
+		case '%':
+			N; e = applyBOP(EXPR_OP_MOD, e, parse_cast_expr(p)); break;
+		default:
+			return parse_additive_expr_post(p, e, prec);
+		}
+	}
+	return e;
+}
+
+static Expr *parse_multiplicative_expr(Parser *p)
+{
+	return parse_multiplicative_expr_post(p, parse_cast_expr(p), 5);
+}
+
+static Expr *parse_additive_expr(Parser *p)
+{
+	return parse_additive_expr_post(p, parse_multiplicative_expr(p), 6);
+}
+
+static Expr *parse_shift_expr(Parser *p)
+{
+	return parse_shift_expr_post(p, parse_additive_expr(p), 7);
+}
+
+static Expr *parse_relational_expr(Parser *p)
+{
+	return parse_relational_expr_post(p, parse_shift_expr(p), 8);
+}
+
+static Expr *parse_equality_expr(Parser *p)
+{
+	return parse_equality_expr_post(p, parse_relational_expr(p), 9);
+}
+
+static Expr *parse_band_expr(Parser *p)
+{
+	return parse_band_expr_post(p, parse_equality_expr(p), 10);
+}
+
+static Expr *parse_bxor_expr(Parser *p)
+{
+	return parse_bxor_expr_post(p, parse_band_expr(p), 11);
+}
+
+static Expr *parse_bor_expr(Parser *p)
+{
+	return parse_bor_expr_post(p, parse_bxor_expr(p), 12);
+}
+
+static Expr *parse_and_expr(Parser *p)
+{
+	return parse_and_expr_post(p, parse_bor_expr(p), 13);
+}
+
+static Expr *parse_or_expr(Parser *p)
+{
+	return parse_or_expr_post(p, parse_and_expr(p), 14);
+}
+
+static Expr *parse_conditional_expr(Parser *p)
+{
+	return parse_conditional_expr_post(p, parse_or_expr(p), 15);
+}
+
+static Expr *parse_assignment_expr(Parser *p)
+{
+	return parse_assignment_expr_post(p, parse_conditional_expr(p), 16);
+}
+
+typedef struct {
+	Type *type;
+	char *ident;
+} Declarator;
+
+static void fix_type(Declarator *d, Type *btype)
+{
+	Type *tnew = btype;
+	Type *told = d->type;
+	while (told) {
+		switch (told->type) {
+		case TYPE_PTR: {
+			TypePTR *n = (TypePTR *) told;
+			told = n->t;
+			n->t = tnew;
+			tnew = &n->h;
+			break;
+		}
+		case TYPE_ARRAY: {
+			TypeARRAY *n = (TypeARRAY *) told;
+			told = n->t;
+			n->t = tnew;
+			tnew = &n->h;
+			break;
+		}
+		case TYPE_FUN: {
+			TypeFUN *n = (TypeFUN *) told;
+			told = n->rt;
+			n->rt = tnew;
+			tnew = &n->h;
+			break;
+		}
+		default:
+			assert(false);
+		}
+	}
+	d->type = tnew;
+}
+
+static int parse_declarator(Parser *p, Declarator *d)
+{
+	Type *btype = d->type;
+	d->type = NULL;
+	if (P == '*') {
+		N;
+		F(parse_declarator(p, d));
+		d->type = typePTR(d->type);
+		fix_type(d, btype);
+		return 1;
+	}
+	if (P == TOK_IDENT) {
+		F(d->ident == NULL);
+		d->ident = strdup(PS);
+		N;
+	} else if (P == '(') {
+		N;
+		F(parse_declarator(p, d));
+		F(match(p, ')'));
+	}
+	while (1) {
+		if (P == '[') {
+			N;
+			Expr *e;
+			e = parse_assignment_expr(p);
+			F(match(p, ']'), tree_free(e));
+			d->type = typeARRAY(d->type, e);
+		} else if (P == '(') {
+			N;
+			TypeFUN *n = typeFUN(d->type);
+			if (P == ')') {
+				N;
+				d->type = &n->h;
+			} else {
+				Type *t;
+				F(t = parse_type(p), tree_free(&n->h));
+				typeFUN_append(n, t);
+				while (P == ',') {
+					N;
+					F(t = parse_type(p), tree_free(&n->h));
+					typeFUN_append(n, t);
+				}
+				F(match(p, ')'), tree_free(&n->h));
+				d->type = &n->h;
+			}
+		} else {
+			break;
+		}
+	}
+	fix_type(d, btype);
+	return 1;
+}
+
+static Declarator parse_type1(Parser *p)
+{
+	Declarator d, err;
+	d.type = NULL;
+	d.ident = NULL;
+	err.type = NULL;
+	err.ident = NULL;
+
+	while (1) {
+		// storage-class-specifier
+		switch (P) {
+		case TOK_TYPEDEF:
+			N; continue;
+		case TOK_EXTERN:
+			N; continue;
+		case TOK_STATIC:
+			N; continue;
+		case TOK_AUTO:
+			N; continue;
+		case TOK_REGISTER:
+			N; continue;
+		default:
+			break;
+		}
+		// type-specifier
+		switch (P) {
+		case TOK_VOID:
+			N;
+			F_(d.type == NULL, err);
+			d.type = typeVOID();
+			continue;
+		case TOK_INT:
+			N;
+			F_(d.type == NULL, err);
+			d.type = typeINT();
+			continue;
+		case TOK_CHAR:
+			N;
+			F_(d.type == NULL, err);
+			d.type = typeCHAR();
+			continue;
+		// TODO: more types
+		default:
+			break;
+		}
+		// type-qualifier
+		switch (P) {
+		case TOK_CONST:
+		case TOK_RESTRICT:
+		case TOK_VOLATILE:
+			N; continue;
+		default:
+			break;
+		}
+		// function-specifier
+		switch (P) {
+		case TOK_INLINE:
+			N; continue;
+		default:
+			break;
+		}
+		break;
+	}
+	F_(d.type, err);
+	F_(parse_declarator(p, &d), err);
+	return d;
+}
+
+static StmtBLOCK *parse_stmts(Parser *p)
+{
+	StmtBLOCK *block = stmtBLOCK();
+	while (P != '}' && P != TOK_END) {
+		Stmt *s;
+		F(s = parse_stmt(p), tree_free(&block->h));
+		stmtBLOCK_append(block, s);
+	}
+	return block;
+}
+
+static StmtBLOCK *parse_block_stmt(Parser *p)
+{
+	StmtBLOCK *block;
+	F(match(p, '{'));
+	F(block = parse_stmts(p));
+	F(match(p, '}'), tree_free(&block->h));
+	return block;
+}
+
+Stmt *parse_decl(Parser *p)
+{
+	Declarator d = parse_type1(p);
+	F(d.type);
+	F(d.ident, tree_free(d.type));
+
+	if (d.type->type == TYPE_FUN) {
+		if (P == ';') {
+			N;
+			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, NULL);
+		} else {
+			StmtBLOCK *b;
+			F(b = parse_block_stmt(p), tree_free(d.type), free(d.ident));
+			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, b);
+		}
+	} else {
+		if (P == ';') {
+			N;
+			return stmtVARDECL(d.ident, d.type, NULL);
+		} else {
+			if (0) {
+				// TODO: init
+				return stmtVARDECL(d.ident, d.type, NULL);
+			}
+			tree_free(d.type);
+			free(d.ident);
+		}
+	}
+	return NULL;
+}
+
+Stmt *parse_stmt(Parser *p)
+{
+	switch (P) {
+	case TOK_IF: {
+		N;
+		Expr *e;
+		Stmt *s1, *s2;
+		F(match(p, '('));
+		F(e = parse_expr(p));
+		F(match(p, ')'), tree_free(e));
+		F(s1 = parse_stmt(p), tree_free(e));
+		if (P == TOK_ELSE) {
+			N;
+			F(s2 = parse_stmt(p), tree_free(e), tree_free(s1));
+			return stmtIF(e, s1, s2);
+		}
+		return stmtIF(e, s1, NULL);
+	}
+	case TOK_WHILE: {
+		N;
+		Expr *e;
+		Stmt *s;
+		F(match(p, '('));
+		F(e = parse_expr(p));
+		F(match(p, ')'), tree_free(e));
+		F(s = parse_stmt(p), tree_free(e));
+		return stmtWHILE(e, s);
+	}
+	case TOK_DO: {
+		N;
+		Expr *e;
+		Stmt *s;
+		F(s = parse_stmt(p));
+		F(match(p, TOK_WHILE), tree_free(s));
+		F(match(p, '('), tree_free(s));
+		F(e = parse_expr(p), tree_free(s));
+		F(match(p, ')'), tree_free(s), tree_free(e));
+		F(match(p, ';'), tree_free(s), tree_free(e));
+	}
+	case TOK_FOR: {
+		N;
+		Expr *init, *cond, *step;
+		Stmt *body;
+		F(match(p, '('));
+		init = parse_expr(p);
+		F(match(p, ';'), tree_free(init));
+		cond = parse_expr(p);
+		F(match(p, ';'), tree_free(init), tree_free(cond));
+		step = parse_expr(p);
+		F(match(p, ')'), tree_free(init), tree_free(cond), tree_free(step));
+		F(body = parse_stmt(p), tree_free(init), tree_free(cond), tree_free(step));
+		return stmtFOR(init, cond, step, body);
+	}
+	case TOK_BREAK: {
+		N;
+		F(match(p, ';'));
+		return stmtBREAK();
+	}
+	case TOK_CONTINUE: {
+		N;
+		F(match(p, ';'));
+		return stmtCONTINUE();
+	}
+	case TOK_SWITCH: {
+		N;
+		Expr *e;
+		StmtBLOCK *b;
+		F(match(p, '('));
+		F(e = parse_expr(p));
+		F(match(p, ')'), tree_free(e));;
+		F(b = parse_block_stmt(p), tree_free(e));
+		return stmtSWITCH(e, b);
+	}
+	case TOK_CASE: {
+		N;
+		F(P == TOK_IDENT);
+		char *id = strdup(PS);
+		Stmt *s;
+		N;
+		F(match(p, ':'), free(id));
+		F(s = parse_stmt(p), free(id));
+		return stmtCASE(id, s);
+	}
+	case TOK_DEFAULT: {
+		N;
+		Stmt *s;
+		F(match(p, ':'));
+		F(s = parse_stmt(p));
+		return stmtDEFAULT(s);
+	}
+	case TOK_RETURN: {
+		N;
+		Expr *e;
+		F(e = parse_expr(p));
+		F(match(p, ';'), tree_free(e));
+		return stmtRETURN(e);
+	}
+	case TOK_GOTO: {
+		N;
+		F(P == TOK_IDENT);
+		char *id = strdup(PS);
+		N;
+		F(match(p, ';'), free(id));
+		return stmtGOTO(id);
+	}
+	case '{': {
+		return (Stmt *) parse_block_stmt(p);
+	}
+	default: {
+		Stmt *decl = parse_decl(p);
+		if (decl)
+			return decl;
+
+		Expr *e;
+		if (P == TOK_IDENT) {
+			char *id = strdup(PS);
+			N;
+			if (match(p, ':')) {
+				// a label
+				Stmt *s;
+				F(s = parse_stmt(p), free(id));
+				return stmtLABEL(id, s);
+			} else {
+				// maybe an expression
+				e = parse_postfix_expr_post(p, exprIDENT(id), 17);
+			}
+		} else {
+			e = parse_expr(p);
+		}
+		if (e) {
+			F(match(p, ';'), tree_free(e));
+			return stmtEXPR(e);
+		} else {
+			F(match(p, ';'));
+			return stmtSKIP();
+		}
+	}
+	}
+}
+
+Type *parse_type(Parser *p)
+{
+	Declarator d = parse_type1(p);
+	free(d.ident);
+	return d.type;
+}
+
+Expr *parse_expr(Parser *p)
+{
+	Expr *e = parse_assignment_expr(p);
+	return parse_expr_post(p, e, 17);
+}
+
+StmtBLOCK *parse_translation_unit(Parser *p)
+{
+	StmtBLOCK *s = parse_stmts(p);
+	if (lexer_peek(p->lexer) != TOK_END) {
+		tree_free(&s->h);
+		return NULL;
+	}
+	return s;
+}

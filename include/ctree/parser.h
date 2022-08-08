@@ -1,0 +1,19 @@
+#ifndef PARSER_H
+#define PARSER_H
+
+#include "tree.h"
+
+typedef struct Lexer_ Lexer;
+typedef struct Parser_ Parser;
+
+Parser *parser_new(Lexer *l);
+void parser_delete(Parser *p);
+
+StmtBLOCK *parse_translation_unit(Parser *p);
+
+Stmt *parse_decl(Parser *p);
+Stmt *parse_stmt(Parser *p);
+Type *parse_type(Parser *p);
+Expr *parse_expr(Parser *p);
+
+#endif /* PARSER_H */

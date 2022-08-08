@@ -1,0 +1,37 @@
+KWS("for", TOK_FOR);
+KWS("while", TOK_WHILE);
+KWS("do", TOK_DO);
+KWS("break", TOK_BREAK);
+KWS("continue", TOK_CONTINUE);
+KWS("return", TOK_RETURN);
+KWS("if", TOK_IF);
+KWS("else", TOK_ELSE);
+KWS("switch", TOK_SWITCH);
+KWS("case", TOK_CASE);
+KWS("default", TOK_DEFAULT);
+KWS("goto", TOK_GOTO);
+KWS("typedef", TOK_TYPEDEF);
+KWS("struct", TOK_STRUCT);
+KWS("union", TOK_UNION);
+KWS("enum", TOK_ENUM);
+
+KWS("static", TOK_STATIC);
+KWS("auto", TOK_AUTO);
+KWS("register", TOK_REGISTER);
+KWS("extern", TOK_EXTERN);
+KWS("inline", TOK_INLINE);
+KWS("volatile", TOK_VOLATILE);
+KWS("restrict", TOK_RESTRICT);
+KWS("sizeof", TOK_SIZEOF);
+
+KWS("void", TOK_VOID);
+KWS("int", TOK_INT);
+KWS("long", TOK_LONG);
+KWS("short", TOK_SHORT);
+KWS("char", TOK_CHAR);
+KWS("signed", TOK_SIGNED);
+KWS("unsigned", TOK_UNSIGNED);
+KWS("const", TOK_CONST);
+KWS("float", TOK_FLOAT);
+KWS("double", TOK_DOUBLE);
+KWS("_Bool", TOK_BOOL);
