@@ -597,15 +597,12 @@ static void fix_type(Declarator *d, Type *btype)
 }
 
 static Declarator parse_type1(Parser *p);
-static int parse_declarator(Parser *p, Declarator *d)
+static int parse_declarator0(Parser *p, Declarator *d)
 {
-	Type *btype = d->type;
-	d->type = NULL;
 	if (P == '*') {
 		N;
-		F(parse_declarator(p, d));
+		F(parse_declarator0(p, d));
 		d->type = typePTR(d->type);
-		fix_type(d, btype);
 		return 1;
 	}
 	if (P == TOK_IDENT) {
@@ -614,7 +611,7 @@ static int parse_declarator(Parser *p, Declarator *d)
 		N;
 	} else if (P == '(') {
 		N;
-		F(parse_declarator(p, d));
+		F(parse_declarator0(p, d));
 		F(match(p, ')'));
 	}
 	while (1) {
@@ -654,6 +651,14 @@ static int parse_declarator(Parser *p, Declarator *d)
 			break;
 		}
 	}
+	return 1;
+}
+
+static int parse_declarator(Parser *p, Declarator *d)
+{
+	Type *btype = d->type;
+	d->type = NULL;
+	F(parse_declarator0(p, d));
 	fix_type(d, btype);
 	return 1;
 }
