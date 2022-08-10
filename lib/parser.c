@@ -559,6 +559,7 @@ static Expr *parse_assignment_expr(Parser *p)
 typedef struct {
 	Type *type;
 	char *ident;
+	StmtBLOCK *funargs;
 } Declarator;
 
 static void fix_type(Declarator *d, Type *btype)
@@ -595,6 +596,7 @@ static void fix_type(Declarator *d, Type *btype)
 	d->type = tnew;
 }
 
+static Declarator parse_type1(Parser *p);
 static int parse_declarator(Parser *p, Declarator *d)
 {
 	Type *btype = d->type;
@@ -629,13 +631,21 @@ static int parse_declarator(Parser *p, Declarator *d)
 				N;
 				d->type = &n->h;
 			} else {
-				Type *t;
-				F(t = parse_type(p), tree_free(&n->h));
-				typeFUN_append(n, t);
+				d->funargs = stmtBLOCK();
+				Declarator d1 = parse_type1(p);
+				if (d1.type == NULL) {
+					tree_free(&n->h);
+				}
+				typeFUN_append(n, d1.type);
+				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.ident, d1.type, NULL));
 				while (P == ',') {
 					N;
-					F(t = parse_type(p), tree_free(&n->h));
-					typeFUN_append(n, t);
+					d1 = parse_type1(p);
+					if (d1.type == NULL) {
+						tree_free(&n->h);
+					}
+					typeFUN_append(n, d1.type);
+					stmtBLOCK_append(d->funargs, stmtVARDECL(d1.ident, d1.type, NULL));
 				}
 				F(match(p, ')'), tree_free(&n->h));
 				d->type = &n->h;
@@ -653,8 +663,10 @@ static Declarator parse_type1(Parser *p)
 	Declarator d, err;
 	d.type = NULL;
 	d.ident = NULL;
+	d.funargs = NULL;
 	err.type = NULL;
 	err.ident = NULL;
+	err.funargs = NULL;
 
 	while (1) {
 		// storage-class-specifier
@@ -739,17 +751,18 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 Stmt *parse_decl(Parser *p)
 {
 	Declarator d = parse_type1(p);
+	tree_free(&d.funargs->h);
 	F(d.type);
 	F(d.ident, tree_free(d.type));
 
 	if (d.type->type == TYPE_FUN) {
 		if (P == ';') {
 			N;
-			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, NULL);
+			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, d.funargs, NULL);
 		} else {
 			StmtBLOCK *b;
 			F(b = parse_block_stmt(p), tree_free(d.type), free(d.ident));
-			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, b);
+			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, d.funargs, b);
 		}
 	} else {
 		if (P == ';') {
@@ -911,6 +924,7 @@ Type *parse_type(Parser *p)
 {
 	Declarator d = parse_type1(p);
 	free(d.ident);
+	tree_free(&d.funargs->h);
 	return d.type;
 }
 

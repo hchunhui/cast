@@ -360,13 +360,20 @@ static void stmt_print(Stmt *h, int level)
 		printf("// fundecl: %s, type: ", s->name);
 		type_print_annot(&s->type->h);
 		printf("\n");
-		if (s->block)
-			stmt_print(&s->block->h, level);
+		printf("// fundecl args:\n");
+		if (s->args)
+			stmt_print(&s->args->h, level);
+		printf("// fundecl body:\n");
+		if (s->body)
+			stmt_print(&s->body->h, level);
 		break;
 	}
 	case STMT_VARDECL: {
 		StmtVARDECL *s = (StmtVARDECL *) h;
-		printf("// vardecl: %s, type: ", s->name);
+		if (s->name)
+			printf("// vardecl: %s, type: ", s->name);
+		else
+			printf("// vardecl: /* unnamed */, type: ");
 		type_print_annot(s->type);
 		printf("\n");
 		break;

@@ -58,7 +58,7 @@ STMT(SKIP)
 //STMT(BLOCK)
 
 
-STMT(FUNDECL, const char *, name, TypeFUN *, type, StmtBLOCK *, block)
+STMT(FUNDECL, const char *, name, TypeFUN *, type, StmtBLOCK *, args, StmtBLOCK *, body)
 STMT(VARDECL, const char *, name, Type *,    type, Expr *,      init)
 STMT(TYPEDEF, const char *, name, Type *,    type)
 STMT(STRUCT,  const char *, name, Type *,    type)
