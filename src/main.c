@@ -18,14 +18,14 @@ static void type_print_annot(Type *type)
 		printf("char");
 		break;
 	case TYPE_PTR:
-		printf("pointer(");
+		printf("pointer( ");
 		type_print_annot(((TypePTR *) type)->t);
-		printf(")");
+		printf(" )");
 		break;
 	case TYPE_ARRAY:
-		printf("array(");
+		printf("array( ");
 		type_print_annot(((TypeARRAY *) type)->t);
-		printf(", ");
+		printf(" ,");
 		if (((TypeARRAY *) type)->n)
 			expr_print(((TypeARRAY *) type)->n);
 		printf(")");
@@ -45,6 +45,105 @@ static void type_print_annot(Type *type)
 		assert(false);
 		break;
 	}
+}
+
+static Type* type_get_basic(Type *type)
+{
+	switch(type->type) {
+	case TYPE_VOID:
+	case TYPE_INT:
+	case TYPE_CHAR:
+	case TYPE_FUN:
+	case TYPE_TYPEDEF:
+		return type;
+	case TYPE_PTR:
+		return type_get_basic(((TypePTR *) type)->t);
+	case TYPE_ARRAY:
+		return type_get_basic(((TypeARRAY *) type)->t);
+	default:
+		assert(false);
+	}
+}
+
+static void type_print_declarator1(Type *type)
+{
+	switch(type->type) {
+	case TYPE_VOID:
+	case TYPE_INT:
+	case TYPE_CHAR:
+	case TYPE_FUN:
+	case TYPE_TYPEDEF:
+		return;
+	case TYPE_PTR:
+		type_print_declarator1(((TypePTR *) type)->t);
+		printf("*( ");
+		return;
+	case TYPE_ARRAY:
+		type_print_declarator1(((TypeARRAY *) type)->t);
+		printf("( ");
+		return;
+	default:
+		return;
+	}
+}
+
+static void type_print_declarator2(Type *type)
+{
+	switch(type->type) {
+	case TYPE_VOID:
+	case TYPE_INT:
+	case TYPE_CHAR:
+	case TYPE_FUN:
+	case TYPE_TYPEDEF:
+		return;
+	case TYPE_PTR:
+		printf(" )");
+		type_print_declarator2(((TypePTR *) type)->t);
+		return;
+	case TYPE_ARRAY:
+		printf(" ) [");
+		if (((TypeARRAY *) type)->n)
+			expr_print(((TypeARRAY *) type)->n);
+		printf("]");
+		type_print_declarator2(((TypeARRAY *) type)->t);
+		return;
+	default:
+		return;
+	}
+}
+
+static void type_print_vardecl(Type *type, const char *name)
+{
+	type_print_annot(type_get_basic(type));
+	printf(" ");
+	type_print_declarator1(type);
+	if (name) {
+		printf("%s", name);
+	} else {
+		printf("/* unnamed */");
+	}
+	type_print_declarator2(type);
+}
+
+static void type_print_fundecl(TypeFUN *type, StmtBLOCK *args, const char *name)
+{
+	Type *rt = type->rt;
+	type_print_annot(type_get_basic(rt));
+	printf(" ");
+	type_print_declarator1(rt);
+	printf("%s(", name);
+	if (args) {
+		Stmt *p;
+		int i;
+		vec_foreach(&args->items, p, i) {
+			if (i)
+				printf(", ");
+			type_print_vardecl(((StmtVARDECL *) p)->type,
+					   ((StmtVARDECL *) p)->name);
+		}
+	}
+	printf(")");
+	type_print_declarator2(rt);
 }
 
 static const char *bopname(ExprBinOp op)
@@ -190,9 +289,9 @@ static void expr_print(Expr *h)
 		ExprCOND *e = (ExprCOND *) h;
 		printf(" (");
 		expr_print(e->c);
-		printf(") ? ( ");
+		printf(") ? (");
 		expr_print(e->a);
-		printf(") : ( ");
+		printf(") : (");
 		expr_print(e->b);
 		printf(") ");
 		break;
@@ -204,25 +303,25 @@ static void expr_print(Expr *h)
 	}
 	case EXPR_CAST: {
 		ExprCAST *e = (ExprCAST *) h;
-		printf(" /* cast to ");
-		type_print_annot(e->t);
-		printf(" */ (");
+		printf(" ( ");
+		type_print_vardecl(e->t, "");
+		printf(") (");
 		expr_print(e->e);
 		printf(") ");
 		break;
 	}
 	case EXPR_SIZEOF: {
 		ExprSIZEOF *e = (ExprSIZEOF *) h;
-		printf(" sizeof( ");
+		printf(" sizeof (");
 		expr_print(e->e);
-		printf(" ) ");
+		printf(") ");
 		break;
 	}
 	case EXPR_SIZEOFT: {
 		ExprSIZEOFT *e = (ExprSIZEOFT *) h;
-		printf(" sizeof(/* ");
-		type_print_annot(e->t);
-		printf(" */) ");
+		printf(" sizeof ( ");
+		type_print_vardecl(e->t, "");
+		printf(") ");
 		break;
 	}
 	}
@@ -360,12 +459,14 @@ static void stmt_print(Stmt *h, int level)
 		printf("// fundecl: %s, type: ", s->name);
 		type_print_annot(&s->type->h);
 		printf("\n");
-		printf("// fundecl args:\n");
-		if (s->args)
-			stmt_print(&s->args->h, level);
-		printf("// fundecl body:\n");
-		if (s->body)
+		print_level(level);
+		type_print_fundecl(s->type, s->args, s->name);
+		if (s->body) {
+			printf("\n");
 			stmt_print(&s->body->h, level);
+		} else {
+			printf(";\n");
+		}
 		break;
 	}
 	case STMT_VARDECL: {
@@ -376,6 +477,9 @@ static void stmt_print(Stmt *h, int level)
 			printf("// vardecl: /* unnamed */, type: ");
 		type_print_annot(s->type);
 		printf("\n");
+		print_level(level);
+		type_print_vardecl(s->type, s->name);
+		printf(";\n");
 		break;
 	}
 	default:
