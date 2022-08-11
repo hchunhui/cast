@@ -76,7 +76,7 @@ static void type_print_declarator1(Type *type)
 		return;
 	case TYPE_PTR:
 		type_print_declarator1(((TypePTR *) type)->t);
-		printf("*( ");
+		printf("* ( ");
 		return;
 	case TYPE_ARRAY:
 		type_print_declarator1(((TypeARRAY *) type)->t);
@@ -247,11 +247,11 @@ static void expr_print(Expr *h)
 		ExprCALL *e = (ExprCALL *) h;
 		printf(" (");
 		expr_print(e->func);
-		printf(" )(");
+		printf(")(");
 		Expr *p;
 		int i;
 		vec_foreach(&e->args, p, i) {
-			if (i) printf(", ");
+			if (i) printf(",");
 			expr_print(p);
 		}
 		printf(") ");
@@ -269,18 +269,18 @@ static void expr_print(Expr *h)
 	case EXPR_UOP: {
 		ExprUOP *e = (ExprUOP *) h;
 		switch (e->op) {
-		case EXPR_OP_NEG: printf(" -("); expr_print(e->e); printf(") "); break;
-		case EXPR_OP_POS: printf(" +("); expr_print(e->e); printf(") "); break;
-		case EXPR_OP_NOT: printf(" !("); expr_print(e->e); printf(") "); break;
-		case EXPR_OP_BNOT: printf(" ~("); expr_print(e->e); printf(") "); break;
+		case EXPR_OP_NEG: printf(" - ("); expr_print(e->e); printf(") "); break;
+		case EXPR_OP_POS: printf(" + ("); expr_print(e->e); printf(") "); break;
+		case EXPR_OP_NOT: printf(" ! ("); expr_print(e->e); printf(") "); break;
+		case EXPR_OP_BNOT: printf(" ~ ("); expr_print(e->e); printf(") "); break;
 
 		case EXPR_OP_ADDROF: printf(" &("); expr_print(e->e); printf(") "); break;
 		case EXPR_OP_DEREF: printf(" *("); expr_print(e->e); printf(") "); break;
 
-		case EXPR_OP_PREINC: printf(" ++("); expr_print(e->e); printf(") "); break;
-		case EXPR_OP_POSTINC: printf(" ("); expr_print(e->e); printf(")++ "); break;
-		case EXPR_OP_PREDEC: printf(" --("); expr_print(e->e); printf(") "); break;
-		case EXPR_OP_POSTDEC: printf(" ("); expr_print(e->e); printf(")-- "); break;
+		case EXPR_OP_PREINC: printf(" ++ ("); expr_print(e->e); printf(") "); break;
+		case EXPR_OP_POSTINC: printf(" ("); expr_print(e->e); printf(") ++ "); break;
+		case EXPR_OP_PREDEC: printf(" -- ("); expr_print(e->e); printf(") "); break;
+		case EXPR_OP_POSTDEC: printf(" ("); expr_print(e->e); printf(") -- "); break;
 		default: abort();
 		}
 		break;
@@ -433,9 +433,9 @@ static void stmt_print(Stmt *h, int level)
 	}
 	case STMT_RETURN: {
 		StmtRETURN *s = (StmtRETURN *) h;
-		printf("return ");
+		printf("return (");
 		expr_print(s->expr);
-		printf(";\n");
+		printf(") ;\n");
 		break;
 	}
 	case STMT_SKIP: {
@@ -465,7 +465,7 @@ static void stmt_print(Stmt *h, int level)
 			printf("\n");
 			stmt_print(&s->body->h, level);
 		} else {
-			printf(";\n");
+			printf(" ;\n");
 		}
 		break;
 	}
@@ -479,7 +479,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("\n");
 		print_level(level);
 		type_print_vardecl(s->type, s->name);
-		printf(";\n");
+		printf(" ;\n");
 		break;
 	}
 	default:
