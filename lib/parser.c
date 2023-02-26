@@ -77,6 +77,7 @@ static Expr *parse_primary_expr(Parser *p)
 }
 
 static Expr *parse_assignment_expr(Parser *p);
+static Expr *parse_assignment_expr_post(Parser *p, Expr *e, int prec);
 static Expr *parse_multiplicative_expr_post(Parser *p, Expr *e, int prec);
 static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 {
@@ -140,7 +141,11 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 			break;
 		}
 		default:
-			return parse_multiplicative_expr_post(p, e, prec); // XXX
+			if (P == '=') {
+				return parse_assignment_expr_post(p, e, prec);
+			} else {
+				return parse_multiplicative_expr_post(p, e, prec);
+			}
 		}
 	}
 }
@@ -216,8 +221,7 @@ static Expr *parse_cast_expr(Parser *p)
 		return parse_postfix_expr_post(p, e, 4);
 	}
 
-	Expr *e = parse_unary_expr(p);
-	if (e) return e;
+	return parse_unary_expr(p);
 }
 
 static Expr *applyBOP(ExprBinOp op, Expr *a, Expr *b)
@@ -274,30 +278,30 @@ static Expr *parse_assignment_expr_post(Parser *p, Expr *e, int prec)
 
 	switch (P) {
 	case '=':
-		N; return applyBOP(EXPR_OP_ASSIGN, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGN, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNMUL:
-		N; return applyBOP(EXPR_OP_ASSIGNMUL, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNMUL, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNDIV:
-		N; return applyBOP(EXPR_OP_ASSIGNDIV, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNDIV, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNMOD:
-		N; return applyBOP(EXPR_OP_ASSIGNMOD, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNMOD, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNADD:
-		N; return applyBOP(EXPR_OP_ASSIGNADD, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNADD, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNSUB:
-		N; return applyBOP(EXPR_OP_ASSIGNSUB, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNSUB, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNBSHL:
-		N; return applyBOP(EXPR_OP_ASSIGNBSHL, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNBSHL, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNBSHR:
-		N; return applyBOP(EXPR_OP_ASSIGNBSHR, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNBSHR, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNBAND:
-		N; return applyBOP(EXPR_OP_ASSIGNBAND, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNBAND, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNBXOR:
-		N; return applyBOP(EXPR_OP_ASSIGNBXOR, e, parse_assignment_expr(p));
+		N; e = applyBOP(EXPR_OP_ASSIGNBXOR, e, parse_assignment_expr(p)); break;
 	case TOK_ASSIGNBOR:
-		N; return applyBOP(EXPR_OP_ASSIGNBOR, e, parse_assignment_expr(p));
-	default:
-		return parse_expr_post(p, e, prec);
+		N; e = applyBOP(EXPR_OP_ASSIGNBOR, e, parse_assignment_expr(p)); break;
+	default:;
 	}
+	return parse_expr_post(p, e, prec);
 }
 
 static Expr *parse_conditional_expr_post(Parser *p, Expr *cond, int prec)
@@ -312,7 +316,7 @@ static Expr *parse_conditional_expr_post(Parser *p, Expr *cond, int prec)
 			F(e1 = parse_expr(p), tree_free(cond));
 			F(match(p, ':'), tree_free(cond), tree_free(e1));
 			F(e2 = parse_conditional_expr(p), tree_free(cond), tree_free(e1));
-			return exprCOND(cond, e1, e2);
+			return parse_assignment_expr_post(p, exprCOND(cond, e1, e2), prec);
 		} else {
 			return parse_assignment_expr_post(p, cond, prec);
 		}
