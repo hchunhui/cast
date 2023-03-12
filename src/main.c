@@ -15,6 +15,24 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_INT:
 		printf("int");
 		break;
+	case TYPE_SHORT:
+		printf("short");
+		break;
+	case TYPE_LONG:
+		printf("long");
+		break;
+	case TYPE_LLONG:
+		printf("long long");
+		break;
+	case TYPE_BOOL:
+		printf("_Bool");
+		break;
+	case TYPE_FLOAT:
+		printf("float");
+		break;
+	case TYPE_DOUBLE:
+		printf("double");
+		break;
 	case TYPE_CHAR:
 		printf("char");
 		break;
@@ -70,7 +88,13 @@ static Type* type_get_basic(Type *type)
 	switch(type->type) {
 	case TYPE_VOID:
 	case TYPE_INT:
+	case TYPE_SHORT:
+	case TYPE_LONG:
+	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_BOOL:
+	case TYPE_FLOAT:
+	case TYPE_DOUBLE:
 	case TYPE_FUN:
 	case TYPE_TYPEDEF:
 	case TYPE_STRUCT:
@@ -89,7 +113,13 @@ static void type_print_declarator1(Type *type)
 	switch(type->type) {
 	case TYPE_VOID:
 	case TYPE_INT:
+	case TYPE_SHORT:
+	case TYPE_LONG:
+	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_BOOL:
+	case TYPE_FLOAT:
+	case TYPE_DOUBLE:
 	case TYPE_FUN:
 	case TYPE_TYPEDEF:
 		return;
@@ -111,7 +141,13 @@ static void type_print_declarator2(Type *type)
 	switch(type->type) {
 	case TYPE_VOID:
 	case TYPE_INT:
+	case TYPE_SHORT:
+	case TYPE_LONG:
+	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_BOOL:
+	case TYPE_FLOAT:
+	case TYPE_DOUBLE:
 	case TYPE_FUN:
 	case TYPE_TYPEDEF:
 		return;
@@ -203,6 +239,7 @@ static const char *bopname(ExprBinOp op)
 	case EXPR_OP_ASSIGNBXOR: return "^=";
 	case EXPR_OP_ASSIGNBSHL: return "<<=";
 	case EXPR_OP_ASSIGNBSHR: return ">>=";
+	default: abort();
 	}
 }
 
@@ -241,6 +278,11 @@ static void expr_print(Expr *h)
 	case EXPR_STRING_CST: {
 		ExprSTRING_CST *e = (ExprSTRING_CST *) h;
 		printf(" \"%s\" ", e->v); // TODO: escape
+		break;
+	}
+	case EXPR_BOOL_CST: {
+		ExprBOOL_CST *e = (ExprBOOL_CST *) h;
+		printf(" %s ", e->v ? "true" : "false");
 		break;
 	}
 	case EXPR_IDENT: {

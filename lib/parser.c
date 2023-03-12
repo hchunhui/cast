@@ -737,10 +737,40 @@ static Declarator parse_type1(Parser *p)
 			F_(d.type == NULL, err);
 			d.type = typeINT();
 			continue;
+		case TOK_LONG:
+			N;
+			F_(d.type == NULL, err);
+			if (P == TOK_LONG) {
+				N;
+				d.type = typeLLONG();
+			} else {
+				d.type = typeLONG();
+			}
+			continue;
+		case TOK_SHORT:
+			N;
+			F_(d.type == NULL, err);
+			d.type = typeSHORT();
+			continue;
 		case TOK_CHAR:
 			N;
 			F_(d.type == NULL, err);
 			d.type = typeCHAR();
+			continue;
+		case TOK_BOOL:
+			N;
+			F_(d.type == NULL, err);
+			d.type = typeBOOL();
+			continue;
+		case TOK_FLOAT:
+			N;
+			F_(d.type == NULL, err);
+			d.type = typeFLOAT();
+			continue;
+		case TOK_DOUBLE:
+			N;
+			F_(d.type == NULL, err);
+			d.type = typeDOUBLE();
 			continue;
 		case TOK_IDENT: {
 			int sv = symlookup(p, PS);
@@ -772,7 +802,6 @@ static Declarator parse_type1(Parser *p)
 			d.type = typeSTRUCT(is_union, tag, decls);
 			break;
 		}
-		// TODO: more types
 		default:
 			break;
 		}
