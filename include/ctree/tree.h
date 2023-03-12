@@ -100,7 +100,7 @@ typedef vec_t(Type*) vec_type_t;
 typedef struct TypeFUN_ {
 	Type h;
 	Type *rt;
-	vec_type_t at;;
+	vec_type_t at;
 } TypeFUN;
 
 TypeFUN *typeFUN(Type *rt);
