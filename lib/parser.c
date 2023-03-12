@@ -588,7 +588,8 @@ static Expr *parse_assignment_expr(Parser *p)
 }
 
 typedef struct {
-	bool tdef;
+	bool is_typedef;
+	unsigned int flags;
 	Type *type;
 	char *ident;
 	StmtBLOCK *funargs;
@@ -666,7 +667,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 					tree_free(&n->h);
 				}
 				typeFUN_append(n, d1.type);
-				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.ident, d1.type, NULL));
+				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL));
 				while (P == ',') {
 					N;
 					d1 = parse_type1(p);
@@ -674,7 +675,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						tree_free(&n->h);
 					}
 					typeFUN_append(n, d1.type);
-					stmtBLOCK_append(d->funargs, stmtVARDECL(d1.ident, d1.type, NULL));
+					stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL));
 				}
 				F(match(p, ')'), tree_free(&n->h));
 				d->type = &n->h;
@@ -699,88 +700,97 @@ static StmtBLOCK *parse_stmts(Parser *p);
 static Declarator parse_type1(Parser *p)
 {
 	Declarator d, err;
-	d.tdef = false;
+	d.is_typedef = false;
+	d.flags = 0;
 	d.type = NULL;
 	d.ident = NULL;
 	d.funargs = NULL;
-	err.tdef = false;
+	err.is_typedef = false;
+	err.flags = 0;
 	err.type = NULL;
 	err.ident = NULL;
 	err.funargs = NULL;
 
-	while (1) {
+	int is_signed = 0;
+	int is_unsigned = 0;
+	int is_short = 0;
+	int long_count = 0;
+
+	int is_int = 0;
+	int is_bool = 0;
+	int is_char = 0;
+	int is_float = 0;
+	int is_double = 0;
+	int is_void = 0;
+
+	bool flag = true;
+	while (flag) {
+		switch (P) {
 		// storage-class-specifier
-		switch (P) {
 		case TOK_TYPEDEF:
-			d.tdef = true;
-			N; continue;
+			d.is_typedef = true;
+			N; break;
 		case TOK_EXTERN:
-			N; continue;
+			d.flags |= DFLAG_EXTERN;
+			N; break;
 		case TOK_STATIC:
-			N; continue;
-		case TOK_AUTO:
-			N; continue;
-		case TOK_REGISTER:
-			N; continue;
-		default:
-			break;
-		}
+			d.flags |= DFLAG_STATIC;
+			N; break;
+		case TOK_AUTO: // ignore
+		case TOK_REGISTER: // ignore
+			N; break;
+		// type-qualifier TODO
+		case TOK_CONST:
+		case TOK_RESTRICT:
+		case TOK_VOLATILE:
+			N; break;
+		// function-specifier TODO
+		case TOK_INLINE:
+			d.flags |= DFLAG_INLINE;
+			N; break;
 		// type-specifier
-		switch (P) {
+		case TOK_SIGNED:
+			N; is_signed = 1;
+			break;
+		case TOK_UNSIGNED:
+			N; is_unsigned = 1;
+			break;
 		case TOK_VOID:
-			N;
-			F_(d.type == NULL, err);
-			d.type = typeVOID();
-			continue;
+			N; is_void = 1;
+			break;
 		case TOK_INT:
-			N;
-			F_(d.type == NULL, err);
-			d.type = typeINT();
-			continue;
+			N; is_int = 1;
+			break;
 		case TOK_LONG:
-			N;
-			F_(d.type == NULL, err);
-			if (P == TOK_LONG) {
-				N;
-				d.type = typeLLONG();
-			} else {
-				d.type = typeLONG();
-			}
-			continue;
+			N; long_count++;
+			break;
 		case TOK_SHORT:
-			N;
-			F_(d.type == NULL, err);
-			d.type = typeSHORT();
-			continue;
+			N; is_short = 1;
+			break;
 		case TOK_CHAR:
-			N;
-			F_(d.type == NULL, err);
-			d.type = typeCHAR();
-			continue;
+			N; is_char = 1;
+			break;
 		case TOK_BOOL:
-			N;
-			F_(d.type == NULL, err);
-			d.type = typeBOOL();
-			continue;
+			N; is_bool = 1;
+			break;
 		case TOK_FLOAT:
-			N;
-			F_(d.type == NULL, err);
-			d.type = typeFLOAT();
-			continue;
+			N; is_float = 1;
+			break;
 		case TOK_DOUBLE:
-			N;
-			F_(d.type == NULL, err);
-			d.type = typeDOUBLE();
-			continue;
+			N; is_double = 1;
+			break;
 		case TOK_IDENT: {
 			int sv = symlookup(p, PS);
-			if (d.type == NULL && sv == SYM_TYPE) {
-				d.type = typeTYPEDEF(strdup(PS));
-				N;
-				continue;
-			} else {
-				break;
+			if (sv == SYM_TYPE) {
+				int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
+				if (d.type == NULL && tcount == 0) {
+					d.type = typeTYPEDEF(strdup(PS));
+					N;
+					break;
+				}
 			}
+			flag = false;
+			break;
 		}
 		case TOK_STRUCT:
 		case TOK_UNION:
@@ -803,25 +813,53 @@ static Declarator parse_type1(Parser *p)
 			break;
 		}
 		default:
+			flag = false;
 			break;
 		}
-		// type-qualifier
-		switch (P) {
-		case TOK_CONST:
-		case TOK_RESTRICT:
-		case TOK_VOLATILE:
-			N; continue;
-		default:
-			break;
+	}
+
+	int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
+	int scount = is_signed + is_unsigned;
+	if (d.type) {
+		if (tcount + scount + is_short + long_count) {
+			tree_free(d.type);
+			d.type = NULL;
 		}
-		// function-specifier
-		switch (P) {
-		case TOK_INLINE:
-			N; continue;
-		default:
-			break;
+	} else {
+		if (tcount == 0 || is_int) {
+			if (is_short) {
+				if (long_count == 0) {
+					d.type = is_unsigned ? typeUSHORT() : typeSHORT();
+				}
+			} else if (long_count == 0) {
+				if (tcount)
+					d.type = is_unsigned ? typeUINT() : typeINT();
+			} else if (long_count == 1) {
+				d.type = is_unsigned ? typeULONG() : typeLONG();
+			} else if (long_count == 2) {
+				d.type = is_unsigned ? typeULLONG() : typeLLONG();
+			}
+		} else {
+			if (is_short + long_count == 0) {
+				if (is_char) {
+					if (is_char)
+						d.type = is_unsigned ? typeUCHAR() : typeCHAR();
+				} else if (scount == 0) {
+					if (is_bool)
+						d.type = typeBOOL();
+					else if (is_float)
+						d.type = typeFLOAT();
+					else if (is_double)
+						d.type = typeDOUBLE();
+					else if (is_void)
+						d.type = typeVOID();
+				}
+			} else {
+				if (is_double && long_count == 1 && !is_short) {
+					d.type = typeLDOUBLE();
+				}
+			}
 		}
-		break;
 	}
 	F_(d.type, err);
 	F_(parse_declarator(p, &d), err);
@@ -863,13 +901,13 @@ Stmt *parse_decl(Parser *p)
 		if (d.ident == NULL) {
 			if (P == ';') {
 				N;
-				return stmtVARDECL(d.ident, d.type, NULL);
+				return stmtVARDECL(d.flags, d.ident, d.type, NULL);
 			}
 		}
 	}
 	F(d.ident, tree_free(d.type));
 
-	if (d.tdef) {
+	if (d.is_typedef) {
 		if (P == ';') {
 			N;
 			symset(p, d.ident, SYM_TYPE);
@@ -885,20 +923,20 @@ Stmt *parse_decl(Parser *p)
 	if (d.type->type == TYPE_FUN) {
 		if (P == ';') {
 			N;
-			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, d.funargs, NULL);
+			return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL);
 		} else {
 			StmtBLOCK *b;
 			F(b = parse_block_stmt(p), tree_free(d.type), free(d.ident));
-			return stmtFUNDECL(d.ident, (TypeFUN *) d.type, d.funargs, b);
+			return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, b);
 		}
 	} else {
 		if (P == ';') {
 			N;
-			return stmtVARDECL(d.ident, d.type, NULL);
+			return stmtVARDECL(d.flags, d.ident, d.type, NULL);
 		} else {
 			if (0) {
 				// TODO: init
-				return stmtVARDECL(d.ident, d.type, NULL);
+				return stmtVARDECL(d.flags, d.ident, d.type, NULL);
 			}
 			tree_free(d.type);
 			free(d.ident);

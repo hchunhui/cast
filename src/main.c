@@ -4,6 +4,16 @@
 #include <ctree/lexer.h>
 #include <ctree/parser.h>
 
+static void decl_flags_print(unsigned int flags)
+{
+	if (flags & DFLAG_EXTERN)
+		printf("extern ");
+	if (flags & DFLAG_STATIC)
+		printf("static ");
+	if (flags & DFLAG_INLINE)
+		printf("inline ");
+}
+
 static void expr_print(Expr *h);
 static void stmt_print(Stmt *h, int level);
 static void type_print_annot(Type *type, bool simple)
@@ -24,11 +34,26 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_LLONG:
 		printf("long long");
 		break;
+	case TYPE_UINT:
+		printf("unsigned int");
+		break;
+	case TYPE_USHORT:
+		printf("unsigned short");
+		break;
+	case TYPE_ULONG:
+		printf("unsigned long");
+		break;
+	case TYPE_ULLONG:
+		printf("unsigned long long");
+		break;
 	case TYPE_BOOL:
 		printf("_Bool");
 		break;
 	case TYPE_FLOAT:
 		printf("float");
+		break;
+	case TYPE_LDOUBLE:
+		printf("long double");
 		break;
 	case TYPE_DOUBLE:
 		printf("double");
@@ -92,9 +117,15 @@ static Type* type_get_basic(Type *type)
 	case TYPE_LONG:
 	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_UINT:
+	case TYPE_USHORT:
+	case TYPE_ULONG:
+	case TYPE_ULLONG:
+	case TYPE_UCHAR:
 	case TYPE_BOOL:
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
+	case TYPE_LDOUBLE:
 	case TYPE_FUN:
 	case TYPE_TYPEDEF:
 	case TYPE_STRUCT:
@@ -117,9 +148,15 @@ static void type_print_declarator1(Type *type)
 	case TYPE_LONG:
 	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_UINT:
+	case TYPE_USHORT:
+	case TYPE_ULONG:
+	case TYPE_ULLONG:
+	case TYPE_UCHAR:
 	case TYPE_BOOL:
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
+	case TYPE_LDOUBLE:
 	case TYPE_FUN:
 	case TYPE_TYPEDEF:
 		return;
@@ -145,9 +182,15 @@ static void type_print_declarator2(Type *type)
 	case TYPE_LONG:
 	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_UINT:
+	case TYPE_USHORT:
+	case TYPE_ULONG:
+	case TYPE_ULLONG:
+	case TYPE_UCHAR:
 	case TYPE_BOOL:
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
+	case TYPE_LDOUBLE:
 	case TYPE_FUN:
 	case TYPE_TYPEDEF:
 		return;
@@ -167,8 +210,9 @@ static void type_print_declarator2(Type *type)
 	}
 }
 
-static void type_print_vardecl(Type *type, const char *name)
+static void type_print_vardecl(unsigned int flags, Type *type, const char *name)
 {
+	decl_flags_print(flags);
 	type_print_annot(type_get_basic(type), false);
 	printf(" ");
 	type_print_declarator1(type);
@@ -180,9 +224,10 @@ static void type_print_vardecl(Type *type, const char *name)
 	type_print_declarator2(type);
 }
 
-static void type_print_fundecl(TypeFUN *type, StmtBLOCK *args, const char *name)
+static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *args, const char *name)
 {
 	Type *rt = type->rt;
+	decl_flags_print(flags);
 	type_print_annot(type_get_basic(rt), false);
 	printf(" ");
 	type_print_declarator1(rt);
@@ -193,8 +238,10 @@ static void type_print_fundecl(TypeFUN *type, StmtBLOCK *args, const char *name)
 		vec_foreach(&args->items, p, i) {
 			if (i)
 				printf(", ");
-			type_print_vardecl(((StmtVARDECL *) p)->type,
-					   ((StmtVARDECL *) p)->name);
+			type_print_vardecl(
+				((StmtVARDECL *) p)->flags,
+				((StmtVARDECL *) p)->type,
+				((StmtVARDECL *) p)->name);
 		}
 	}
 	printf(")");
@@ -365,7 +412,7 @@ static void expr_print(Expr *h)
 	case EXPR_CAST: {
 		ExprCAST *e = (ExprCAST *) h;
 		printf(" ( ");
-		type_print_vardecl(e->t, "");
+		type_print_vardecl(0, e->t, "");
 		printf(") (");
 		expr_print(e->e);
 		printf(") ");
@@ -381,7 +428,7 @@ static void expr_print(Expr *h)
 	case EXPR_SIZEOFT: {
 		ExprSIZEOFT *e = (ExprSIZEOFT *) h;
 		printf(" sizeof ( ");
-		type_print_vardecl(e->t, "");
+		type_print_vardecl(0, e->t, "");
 		printf(") ");
 		break;
 	}
@@ -521,7 +568,7 @@ static void stmt_print(Stmt *h, int level)
 		type_print_annot(&s->type->h, true);
 		printf("\n");
 		print_level(level);
-		type_print_fundecl(s->type, s->args, s->name);
+		type_print_fundecl(s->flags, s->type, s->args, s->name);
 		if (s->body) {
 			printf("\n");
 			stmt_print(&s->body->h, level);
@@ -539,7 +586,7 @@ static void stmt_print(Stmt *h, int level)
 		type_print_annot(s->type, true);
 		printf("\n");
 		print_level(level);
-		type_print_vardecl(s->type, s->name);
+		type_print_vardecl(s->flags, s->type, s->name);
 		printf(" ;\n");
 		break;
 	}
@@ -550,7 +597,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("\n");
 		print_level(level);
 		printf("typedef ");
-		type_print_vardecl(s->type, s->name);
+		type_print_vardecl(0, s->type, s->name);
 		printf(" ;\n");
 		break;
 	}

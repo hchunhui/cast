@@ -2,6 +2,10 @@
 #define TREE_H
 
 #include <stdbool.h>
+#define DFLAG_EXTERN 1
+#define DFLAG_STATIC 2
+#define DFLAG_INLINE 4
+
 typedef struct Tree_ {
 	enum {
 #define STMT(id, ...)
@@ -134,8 +138,8 @@ void stmtBLOCK_append(StmtBLOCK *block, Stmt *i);
 #undef EXPR
 #undef TYPE
 
-#define ARGCOUNT_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, ...) _9
-#define ARGCOUNT(...) ARGCOUNT_IMPL(~, ## __VA_ARGS__,  8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define ARGCOUNT_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, ...) _11
+#define ARGCOUNT(...) ARGCOUNT_IMPL(~, ## __VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #define PASTE0(a, b) a ## b
 #define PASTE(a, b) PASTE0(a, b)
 #define GEN_0(TYPENAME, FUNCNAME, id)	\
@@ -177,6 +181,17 @@ void stmtBLOCK_append(StmtBLOCK *block, Stmt *i);
 		T4 v4;  \
 	}; \
 	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4);
+
+#define GEN_10(TYPENAME, FUNCNAME, id, T1, v1, T2, v2, T3, v3, T4, v4, T5, v5) \
+	struct TYPENAME##id##_ { \
+		Tree h; \
+		T1 v1;  \
+		T2 v2;  \
+		T3 v3;  \
+		T4 v4;  \
+		T5 v5;  \
+	}; \
+	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4, T5 v5);
 
 #define STMT(id, ...) PASTE(GEN_, ARGCOUNT(__VA_ARGS__))(Stmt, stmt, id, ## __VA_ARGS__)
 #define EXPR(id, ...) PASTE(GEN_, ARGCOUNT(__VA_ARGS__))(Expr, expr, id, ## __VA_ARGS__)
