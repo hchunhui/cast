@@ -897,20 +897,12 @@ Stmt *parse_decl(Parser *p)
 	Declarator d = parse_type1(p);
 	tree_free(&d.funargs->h);
 	F(d.type);
-	if (d.type->type == TYPE_STRUCT) {
-		if (d.ident == NULL) {
-			if (P == ';') {
-				N;
-				return stmtVARDECL(d.flags, d.ident, d.type, NULL);
-			}
-		}
-	}
-	F(d.ident, tree_free(d.type));
 
 	if (d.is_typedef) {
 		if (P == ';') {
 			N;
-			symset(p, d.ident, SYM_TYPE);
+			if (d.ident)
+				symset(p, d.ident, SYM_TYPE);
 			return stmtTYPEDEF(d.ident, d.type);
 		} else {
 			tree_free(d.type);
@@ -919,7 +911,8 @@ Stmt *parse_decl(Parser *p)
 		}
 	}
 
-	symset(p, d.ident, SYM_IDENT);
+	if (d.ident)
+		symset(p, d.ident, SYM_IDENT);
 	if (d.type->type == TYPE_FUN) {
 		if (P == ';') {
 			N;
