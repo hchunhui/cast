@@ -1,6 +1,7 @@
 #ifndef TREE_H
 #define TREE_H
 
+#include <stdbool.h>
 typedef struct Tree_ {
 	enum {
 #define STMT(id, ...)
@@ -27,8 +28,6 @@ typedef struct Tree_ {
 #undef TYPE
 #define TYPE(id, ...)
 		TYPE_FUN,
-		TYPE_STRUCT,
-		TYPE_UNION,
 
 #undef STMT
 #undef EXPR

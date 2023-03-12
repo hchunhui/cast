@@ -5,7 +5,8 @@
 #include <ctree/parser.h>
 
 static void expr_print(Expr *h);
-static void type_print_annot(Type *type)
+static void stmt_print(Stmt *h, int level);
+static void type_print_annot(Type *type, bool simple)
 {
 	switch(type->type) {
 	case TYPE_VOID:
@@ -19,12 +20,12 @@ static void type_print_annot(Type *type)
 		break;
 	case TYPE_PTR:
 		printf("pointer( ");
-		type_print_annot(((TypePTR *) type)->t);
+		type_print_annot(((TypePTR *) type)->t, simple);
 		printf(" )");
 		break;
 	case TYPE_ARRAY:
 		printf("array( ");
-		type_print_annot(((TypeARRAY *) type)->t);
+		type_print_annot(((TypeARRAY *) type)->t, simple);
 		printf(" ,");
 		if (((TypeARRAY *) type)->n)
 			expr_print(((TypeARRAY *) type)->n);
@@ -36,14 +37,28 @@ static void type_print_annot(Type *type)
 		int i;
 		vec_foreach(&((TypeFUN *) type)->at, p, i) {
 			if (i) printf(", ");
-			type_print_annot(p);
+			type_print_annot(p, simple);
 		}
 		printf(") -> ");
-		type_print_annot(((TypeFUN *) type)->rt);
+		type_print_annot(((TypeFUN *) type)->rt, simple);
 		break;
 	case TYPE_TYPEDEF:
 		printf("%s", ((TypeTYPEDEF *) type)->name);
 		break;
+	case TYPE_STRUCT: {
+		TypeSTRUCT *t = (TypeSTRUCT *) type;
+		printf("%s", t->is_union ? "union" : "struct");
+		if (t->tag) printf(" %s", t->tag);
+		if (t->decls) {
+			if (simple) {
+				printf(" {/* ... */}");
+			} else {
+				printf(" ");
+				stmt_print((Stmt *) t->decls, 0);
+			}
+		}
+		break;
+	}
 	default:
 		assert(false);
 		break;
@@ -58,6 +73,7 @@ static Type* type_get_basic(Type *type)
 	case TYPE_CHAR:
 	case TYPE_FUN:
 	case TYPE_TYPEDEF:
+	case TYPE_STRUCT:
 		return type;
 	case TYPE_PTR:
 		return type_get_basic(((TypePTR *) type)->t);
@@ -117,7 +133,7 @@ static void type_print_declarator2(Type *type)
 
 static void type_print_vardecl(Type *type, const char *name)
 {
-	type_print_annot(type_get_basic(type));
+	type_print_annot(type_get_basic(type), false);
 	printf(" ");
 	type_print_declarator1(type);
 	if (name) {
@@ -131,7 +147,7 @@ static void type_print_vardecl(Type *type, const char *name)
 static void type_print_fundecl(TypeFUN *type, StmtBLOCK *args, const char *name)
 {
 	Type *rt = type->rt;
-	type_print_annot(type_get_basic(rt));
+	type_print_annot(type_get_basic(rt), false);
 	printf(" ");
 	type_print_declarator1(rt);
 	printf("%s(", name);
@@ -460,7 +476,7 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_FUNDECL: {
 		StmtFUNDECL *s = (StmtFUNDECL *) h;
 		printf("// fundecl: %s, type: ", s->name);
-		type_print_annot(&s->type->h);
+		type_print_annot(&s->type->h, true);
 		printf("\n");
 		print_level(level);
 		type_print_fundecl(s->type, s->args, s->name);
@@ -478,7 +494,7 @@ static void stmt_print(Stmt *h, int level)
 			printf("// vardecl: %s, type: ", s->name);
 		else
 			printf("// vardecl: /* unnamed */, type: ");
-		type_print_annot(s->type);
+		type_print_annot(s->type, true);
 		printf("\n");
 		print_level(level);
 		type_print_vardecl(s->type, s->name);
@@ -488,7 +504,7 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_TYPEDEF: {
 		StmtTYPEDEF *s = (StmtTYPEDEF *) h;
 		printf("// typedef: %s, type: ", s->name);
-		type_print_annot(s->type);
+		type_print_annot(s->type, true);
 		printf("\n");
 		print_level(level);
 		printf("typedef ");

@@ -695,6 +695,7 @@ static int parse_declarator(Parser *p, Declarator *d)
 	return 1;
 }
 
+static StmtBLOCK *parse_stmts(Parser *p);
 static Declarator parse_type1(Parser *p)
 {
 	Declarator d, err;
@@ -750,6 +751,26 @@ static Declarator parse_type1(Parser *p)
 			} else {
 				break;
 			}
+		}
+		case TOK_STRUCT:
+		case TOK_UNION:
+		{
+			bool is_union = P == TOK_UNION;
+			N;
+			F_(d.type == NULL, err);
+			char *tag = NULL;
+			StmtBLOCK *decls = NULL;
+			if (P == TOK_IDENT) {
+				tag = strdup(PS);
+				N;
+			}
+			if (P == '{') {
+				N;
+				decls = parse_stmts(p);
+				F_(match(p, '}'), err, tree_free(&decls->h));
+			}
+			d.type = typeSTRUCT(is_union, tag, decls);
+			break;
 		}
 		// TODO: more types
 		default:
@@ -809,6 +830,14 @@ Stmt *parse_decl(Parser *p)
 	Declarator d = parse_type1(p);
 	tree_free(&d.funargs->h);
 	F(d.type);
+	if (d.type->type == TYPE_STRUCT) {
+		if (d.ident == NULL) {
+			if (P == ';') {
+				N;
+				return stmtVARDECL(d.ident, d.type, NULL);
+			}
+		}
+	}
 	F(d.ident, tree_free(d.type));
 
 	if (d.tdef) {
