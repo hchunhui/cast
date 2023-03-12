@@ -5,14 +5,41 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
+#include "map.h"
+
+#define SYM_UNKNOWN 0
+#define SYM_IDENT 1
+#define SYM_TYPE 2
 
 struct Parser_ {
 	Lexer *lexer;
+	map_int_t symtabs[100];
+	int symtop;
 };
+
+static int symlookup(Parser *p, const char *sym)
+{
+	int top = p->symtop - 1;
+	int v = SYM_UNKNOWN;
+	for (; top >= 0; top--) {
+		int *pv = map_get(&(p->symtabs[top]), sym);
+		if (pv) {
+			v = *pv;
+			break;
+		}
+	}
+	return v;
+}
+
+static void symset(Parser *p, const char *sym, int sv)
+{
+	map_set(&(p->symtabs[p->symtop - 1]), sym, sv);
+}
 
 static void parser_init(Parser *p, Lexer *l)
 {
 	p->lexer = l;
+	p->symtop = 0;
 }
 
 static void parser_free(Parser *p)
@@ -561,6 +588,7 @@ static Expr *parse_assignment_expr(Parser *p)
 }
 
 typedef struct {
+	bool tdef;
 	Type *type;
 	char *ident;
 	StmtBLOCK *funargs;
@@ -670,9 +698,11 @@ static int parse_declarator(Parser *p, Declarator *d)
 static Declarator parse_type1(Parser *p)
 {
 	Declarator d, err;
+	d.tdef = false;
 	d.type = NULL;
 	d.ident = NULL;
 	d.funargs = NULL;
+	err.tdef = false;
 	err.type = NULL;
 	err.ident = NULL;
 	err.funargs = NULL;
@@ -681,6 +711,7 @@ static Declarator parse_type1(Parser *p)
 		// storage-class-specifier
 		switch (P) {
 		case TOK_TYPEDEF:
+			d.tdef = true;
 			N; continue;
 		case TOK_EXTERN:
 			N; continue;
@@ -710,6 +741,16 @@ static Declarator parse_type1(Parser *p)
 			F_(d.type == NULL, err);
 			d.type = typeCHAR();
 			continue;
+		case TOK_IDENT: {
+			int sv = symlookup(p, PS);
+			if (d.type == NULL && sv == SYM_TYPE) {
+				d.type = typeTYPEDEF(strdup(PS));
+				N;
+				continue;
+			} else {
+				break;
+			}
+		}
 		// TODO: more types
 		default:
 			break;
@@ -740,11 +781,17 @@ static Declarator parse_type1(Parser *p)
 static StmtBLOCK *parse_stmts(Parser *p)
 {
 	StmtBLOCK *block = stmtBLOCK();
+	assert(p->symtop < 100);
+	map_init(&(p->symtabs[p->symtop]));
+	p->symtop++;
 	while (P != '}' && P != TOK_END) {
 		Stmt *s;
-		F(s = parse_stmt(p), tree_free(&block->h));
+		F(s = parse_stmt(p), tree_free(&block->h),
+		  p->symtop--, map_deinit(&(p->symtabs[p->symtop])));
 		stmtBLOCK_append(block, s);
 	}
+	p->symtop--;
+	map_deinit(&(p->symtabs[p->symtop]));
 	return block;
 }
 
@@ -764,6 +811,19 @@ Stmt *parse_decl(Parser *p)
 	F(d.type);
 	F(d.ident, tree_free(d.type));
 
+	if (d.tdef) {
+		if (P == ';') {
+			N;
+			symset(p, d.ident, SYM_TYPE);
+			return stmtTYPEDEF(d.ident, d.type);
+		} else {
+			tree_free(d.type);
+			free(d.ident);
+			return NULL;
+		}
+	}
+
+	symset(p, d.ident, SYM_IDENT);
 	if (d.type->type == TYPE_FUN) {
 		if (P == ';') {
 			N;

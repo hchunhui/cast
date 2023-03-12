@@ -29,7 +29,6 @@ typedef struct Tree_ {
 		TYPE_FUN,
 		TYPE_STRUCT,
 		TYPE_UNION,
-		TYPE_TYPEDEF,
 
 #undef STMT
 #undef EXPR

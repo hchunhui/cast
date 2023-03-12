@@ -13,7 +13,7 @@ TYPE(PTR, Type *, t)
 TYPE(ARRAY, Type *, t, Expr *, n)
 //TYPE(STRUCT)
 //TYPE(UNION)
-//TYPE(TYPEDEF)
+TYPE(TYPEDEF, const char *, name)
 
 EXPR(INT_CST,    int, v)
 EXPR(LONG_CST,   long, v)

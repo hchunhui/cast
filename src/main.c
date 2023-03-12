@@ -41,6 +41,9 @@ static void type_print_annot(Type *type)
 		printf(") -> ");
 		type_print_annot(((TypeFUN *) type)->rt);
 		break;
+	case TYPE_TYPEDEF:
+		printf("%s", ((TypeTYPEDEF *) type)->name);
+		break;
 	default:
 		assert(false);
 		break;
@@ -478,6 +481,17 @@ static void stmt_print(Stmt *h, int level)
 		type_print_annot(s->type);
 		printf("\n");
 		print_level(level);
+		type_print_vardecl(s->type, s->name);
+		printf(" ;\n");
+		break;
+	}
+	case STMT_TYPEDEF: {
+		StmtTYPEDEF *s = (StmtTYPEDEF *) h;
+		printf("// typedef: %s, type: ", s->name);
+		type_print_annot(s->type);
+		printf("\n");
+		print_level(level);
+		printf("typedef ");
 		type_print_vardecl(s->type, s->name);
 		printf(" ;\n");
 		break;
