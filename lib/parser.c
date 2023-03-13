@@ -126,7 +126,6 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 			ExprCALL *n = exprCALL(e);
 			if (P == ')') {
 				N;
-				return &n->h;
 			} else {
 				Expr *arg;
 				F(arg = parse_assignment_expr(p), tree_free(&n->h));
@@ -137,8 +136,8 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 					exprCALL_append(n, arg);
 				}
 				F(match(p, ')'), tree_free(&n->h));
-				return &n->h;
 			}
+			e = &n->h;
 			break;
 		}
 		case '.': {
