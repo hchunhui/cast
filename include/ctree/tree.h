@@ -209,6 +209,7 @@ void stmtBLOCK_append(StmtBLOCK *block, Stmt *i);
 #undef GEN_4
 #undef GEN_6
 #undef GEN_8
+#undef GEN_10
 
 void tree_free(Tree *);
 
