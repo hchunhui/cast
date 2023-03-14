@@ -44,6 +44,19 @@ void stmtBLOCK_append(StmtBLOCK *block, Stmt *i)
 	(void) vec_push(&block->items, i);
 }
 
+StmtDECLS *stmtDECLS()
+{
+	StmtDECLS *t = __new(StmtDECLS);
+	t->h.type = STMT_DECLS;
+	vec_init(&t->items);
+	return t;
+}
+
+void stmtDECLS_append(StmtDECLS *block, Stmt *i)
+{
+	(void) vec_push(&block->items, i);
+}
+
 void tree_free(Tree *t)
 {
 }

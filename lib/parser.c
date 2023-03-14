@@ -912,26 +912,48 @@ Stmt *parse_decl(Parser *p)
 
 	if (d.ident)
 		symset(p, d.ident, SYM_IDENT);
+	if (d.type->type == TYPE_FUN && P == '{') {
+		StmtBLOCK *b;
+		F(b = parse_block_stmt(p), tree_free(d.type), free(d.ident));
+		return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, b);
+	}
+
+	Stmt *decl1;
 	if (d.type->type == TYPE_FUN) {
-		if (P == ';') {
-			N;
-			return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL);
-		} else {
-			StmtBLOCK *b;
-			F(b = parse_block_stmt(p), tree_free(d.type), free(d.ident));
-			return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, b);
-		}
+		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL);
 	} else {
-		if (P == ';') {
+		decl1 = stmtVARDECL(d.flags, d.ident, d.type, NULL);
+	}
+
+	if (P == ';') {
+		N; return decl1;
+	} else {
+		StmtDECLS *decls = stmtDECLS();
+		stmtDECLS_append(decls, decl1);
+		while (P == ',') {
 			N;
-			return stmtVARDECL(d.flags, d.ident, d.type, NULL);
-		} else {
-			if (0) {
-				// TODO: init
-				return stmtVARDECL(d.flags, d.ident, d.type, NULL);
+			Declarator dd = d;
+			//dd.type = type_copy(dd.type);
+			dd.ident = NULL;
+			dd.funargs = NULL;
+			parse_declarator(p, &dd);
+			if (!dd.ident) {
+				//tree_free(dd.type);
+				tree_free((Stmt *) decls);
+				return NULL;
 			}
-			tree_free(d.type);
-			free(d.ident);
+			symset(p, dd.ident, SYM_IDENT);
+			if (dd.type->type == TYPE_FUN) {
+				decl1 = stmtFUNDECL(dd.flags, dd.ident, (TypeFUN *) dd.type, dd.funargs, NULL);
+			} else {
+				decl1 = stmtVARDECL(dd.flags, dd.ident, dd.type, NULL);
+			}
+			stmtDECLS_append(decls, decl1);
+		}
+		if (P == ';') {
+			N; return (Stmt *) decls;
+		} else {
+			tree_free((Stmt *) decls);
 		}
 	}
 	return NULL;

@@ -18,6 +18,7 @@ typedef struct Tree_ {
 #undef STMT
 #define STMT(id, ...)
 		STMT_BLOCK,
+		STMT_DECLS,
 
 #undef  EXPR
 #define EXPR(id, ...) EXPR_##id,
@@ -129,6 +130,13 @@ typedef struct StmtBLOCK_ {
 
 StmtBLOCK *stmtBLOCK();
 void stmtBLOCK_append(StmtBLOCK *block, Stmt *i);
+
+typedef struct StmtDECLS_ {
+	Stmt h;
+	vec_stmt_t items;
+} StmtDECLS;
+StmtDECLS *stmtDECLS();
+void stmtDECLS_append(StmtDECLS *decls, Stmt *i);
 
 #define STMT(id, ...) typedef struct Stmt##id##_ Stmt##id;
 #define EXPR(id, ...) typedef struct Expr##id##_ Expr##id;
