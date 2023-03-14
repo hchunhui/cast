@@ -207,6 +207,60 @@ static int lex_punct(Lexer *l)
 	}
 }
 
+static bool lex_stringbody(Lexer *l)
+{
+	char c;
+	unsigned int d;
+	while ((c = P)) {
+		switch (c) {
+		case '"': return true;
+		case '\\':
+			N; c = P;
+			if (!c)
+				return false;
+			switch (c) {
+			case '\'': case '"': case '?': case '\\': case '/':
+				N; vec_push(&l->tok, c); break;
+			case 'a': N; vec_push(&l->tok, '\a'); break;
+			case 'b': N; vec_push(&l->tok, '\b'); break;
+			case 'f': N; vec_push(&l->tok, '\f'); break;
+			case 'n': N; vec_push(&l->tok, '\n'); break;
+			case 'r': N; vec_push(&l->tok, '\r'); break;
+			case 't': N; vec_push(&l->tok, '\t'); break;
+			case 'v': N; vec_push(&l->tok, '\v'); break;
+			case '0': case '1': case '2': case '3':
+			case '4': case '5': case '6': case '7':
+				d = 0;
+				while (c >= '0' && c <= '7') {
+					d = d * 8 + (c - '0');
+					N; c = P;
+				}
+				vec_push(&l->tok, d);
+				break;
+			case 'x':
+				d = 0;
+				while (c >= '0' && c <= '9' ||
+				      c >= 'a' && c <= 'f' ||
+				      c >= 'A' && c <= 'F') {
+					if (c >= '0' && c <= '9')
+						d = d * 16 + (c - '0');
+					else if (c >= 'a' && c <= 'f')
+						d = d * 16 + (c - 'a' + 10);
+					else if (c >= 'A' && c <= 'F')
+						d = d * 16 + (c - 'A' + 10);
+					N; c = P;
+				}
+				vec_push(&l->tok, d);
+				break;
+			default: return false;
+			}
+			break;
+		default: N; vec_push(&l->tok, c);; break;
+		}
+	}
+	return false;
+}
+
 static int lex_char(Lexer *l)
 {
 	char c = P;
@@ -322,12 +376,17 @@ void lexer_next(Lexer *l)
 			return;
 		}
 		if (lex_one_ignore(l, lex_quote)) {
-			lex_many(l, lex_strchar);
-			if (lex_one_ignore(l, lex_quote)) {
-				l->tok_type = TOK_STRING_CST;
-				return;
-			}
-			l->tok_type = TOK_ERROR;
+			vec_clear(&l->tok);
+			do {
+				if (!lex_stringbody(l) ||
+				    !lex_one_ignore(l, lex_quote)) {
+					l->tok_type = TOK_ERROR;
+					return;
+				}
+				lex_many_ignore(l, lex_space);
+			} while (lex_one_ignore(l, lex_quote));
+			vec_push(&l->tok, 0);
+			l->tok_type = TOK_STRING_CST;
 			return;
 		}
 		int res = lex_char(l);
@@ -348,6 +407,11 @@ int lexer_peek(Lexer *l)
 const char *lexer_peek_string(Lexer *l)
 {
 	return l->tok.data;
+}
+
+int lexer_peek_string_len(Lexer *l)
+{
+	return l->tok.length;
 }
 
 int lexer_peek_int(Lexer *l)

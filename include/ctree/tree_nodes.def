@@ -28,7 +28,7 @@ EXPR(LLONG_CST,  long long, v)
 EXPR(ULLONG_CST, unsigned long long, v)
 EXPR(FLOAT_CST,  double, v)
 EXPR(CHAR_CST,   char, v)
-EXPR(STRING_CST, const char *, v)
+EXPR(STRING_CST, const char *, v, int, len)
 EXPR(BOOL_CST,   _Bool, v)
 
 EXPR(IDENT,      const char *, id)

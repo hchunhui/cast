@@ -83,6 +83,7 @@ void lexer_delete(Lexer *l);
 void lexer_next(Lexer *l);
 int lexer_peek(Lexer *l);
 const char *lexer_peek_string(Lexer *l);
+int lexer_peek_string_len(Lexer *l);
 int lexer_peek_int(Lexer *l);
 char lexer_peek_char(Lexer *l);
 

@@ -61,6 +61,7 @@ void parser_delete(Parser *p)
 
 #define P lexer_peek(p->lexer)
 #define PS lexer_peek_string(p->lexer)
+#define PSL lexer_peek_string_len(p->lexer)
 #define PI lexer_peek_int(p->lexer)
 #define PC lexer_peek_char(p->lexer)
 #define N lexer_next(p->lexer)
@@ -88,14 +89,24 @@ static Expr *parse_parentheses_post(Parser *p)
 static Expr *parse_primary_expr(Parser *p)
 {
 	switch (P) {
-	case TOK_IDENT:
-		N; return exprIDENT(strdup(PS));
-	case TOK_INT_CST:
-		N; return exprINT_CST(PI);
-	case TOK_CHAR_CST:
-		N; return exprCHAR_CST(PC);
-	case TOK_STRING_CST:
-		N; return exprSTRING_CST(strdup(PS));
+	case TOK_IDENT: {
+		const char *name = strdup(PS);
+		N; return exprIDENT(name);
+	}
+	case TOK_INT_CST: {
+		int i = PI;
+		N; return exprINT_CST(i);
+	}
+	case TOK_CHAR_CST: {
+		char c = PC;
+		N; return exprCHAR_CST(c);
+	}
+	case TOK_STRING_CST: {
+		int len = PSL;
+		char *str = malloc(len);
+		memcpy(str, PS, len);
+		N; return exprSTRING_CST(str, len);
+	}
 	case '(':
 		N; return parse_parentheses_post(p);
 	default:
