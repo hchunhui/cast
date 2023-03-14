@@ -648,6 +648,11 @@ static int parse_declarator0(Parser *p, Declarator *d)
 		d->type = typePTR(d->type);
 		return 1;
 	}
+	if (P == TOK_CONST || P == TOK_VOLATILE || P == TOK_RESTRICT) { // TODO
+		N;
+		F(parse_declarator0(p, d));
+		return 1;
+	}
 	if (P == TOK_IDENT) {
 		F(d->ident == NULL);
 		d->ident = strdup(PS);
