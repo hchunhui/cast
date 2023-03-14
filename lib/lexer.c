@@ -72,9 +72,6 @@ struct Lexer_ {
 	TextStream *ts;
 	map_int_t kws;
 
-	// TODO
-	map_void_t typedef_types;
-
 	int tok_type;
 	vec_char_t tok;
 	union {
@@ -310,12 +307,7 @@ void lexer_next(Lexer *l)
 		if (type) {
 			l->tok_type = *type;
 		} else {
-			void **t = map_get(&l->typedef_types, l->tok.data);
-			if (t) {
-				l->tok_type = TOK_TYPE;
-			} else {
-				l->tok_type = TOK_IDENT;
-			}
+			l->tok_type = TOK_IDENT;
 		}
 	} else if (lex_many(l, lex_digit)) {
 		vec_push(&l->tok, 0);
@@ -378,9 +370,6 @@ static void lexer_init(Lexer *l, TextStream *ts)
 #include "keywords.def"
 #undef KWS
 
-	map_init(&l->typedef_types);
-#define TYPE(str) map_set(&l->typedef_types, str, str)
-#undef TYPE
 	lexer_next(l);
 }
 
@@ -413,7 +402,6 @@ static int token_print(Lexer *l)
 #define KWS(str, type) case type: printf("keyword %s\n", str); break
 #include "keywords.def"
 #undef KWS
-	case TOK_TYPE: printf("typedef type %s\n", lexer_peek_string(l)); break;
 	case TOK_INT_CST:
 		printf("int %d\n", lexer_peek_int(l));
 		break;
