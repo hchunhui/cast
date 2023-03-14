@@ -664,6 +664,13 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				Declarator d1 = parse_type1(p);
 				if (d1.type == NULL) {
 					tree_free(&n->h);
+				} else if (d1.type->type == TYPE_VOID &&
+					   d1.ident == NULL && P == ')') {
+					N;
+					tree_free(d1.type);
+					d1.type = NULL;
+					d->type = &n->h;
+					continue;
 				}
 				typeFUN_append(n, d1.type);
 				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL));
