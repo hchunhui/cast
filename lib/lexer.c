@@ -207,6 +207,51 @@ static int lex_punct(Lexer *l)
 	}
 }
 
+static unsigned int lex_escape(Lexer *l)
+{
+	unsigned int c, d;
+	if (P == '\\') {
+		N; c = P;
+		if (!c)
+			return 256;
+		switch (c) {
+		case '\'': case '"': case '?': case '\\': case '/':
+			N; return c;
+		case 'a': N; return '\a';
+		case 'b': N; return '\b';
+		case 'f': N; return '\f';
+		case 'n': N; return '\n';
+		case 'r': N; return '\r';
+		case 't': N; return '\t';
+		case 'v': N; return '\v';
+		case '0': case '1': case '2': case '3':
+		case '4': case '5': case '6': case '7':
+			d = 0;
+			for (int i = 0; i < 3 && c >= '0' && c <= '7'; i++) {
+				d = d * 8 + (c - '0');
+				N; c = P;
+			}
+			return d % 256;
+		case 'x':
+			N; c = P; d = 0;
+			while (c >= '0' && c <= '9' ||
+			       c >= 'a' && c <= 'f' ||
+			       c >= 'A' && c <= 'F') {
+				if (c >= '0' && c <= '9')
+					d = d * 16 + (c - '0');
+				else if (c >= 'a' && c <= 'f')
+					d = d * 16 + (c - 'a' + 10);
+				else if (c >= 'A' && c <= 'F')
+					d = d * 16 + (c - 'A' + 10);
+				N; c = P;
+			}
+			return d % 256;
+		default: return 256;
+		}
+	}
+	return 256;
+}
+
 static bool lex_stringbody(Lexer *l)
 {
 	char c;
@@ -215,45 +260,11 @@ static bool lex_stringbody(Lexer *l)
 		switch (c) {
 		case '"': return true;
 		case '\\':
-			N; c = P;
-			if (!c)
+			d = lex_escape(l);
+			if (d != 256)
+				vec_push(&l->tok, d);
+			else
 				return false;
-			switch (c) {
-			case '\'': case '"': case '?': case '\\': case '/':
-				N; vec_push(&l->tok, c); break;
-			case 'a': N; vec_push(&l->tok, '\a'); break;
-			case 'b': N; vec_push(&l->tok, '\b'); break;
-			case 'f': N; vec_push(&l->tok, '\f'); break;
-			case 'n': N; vec_push(&l->tok, '\n'); break;
-			case 'r': N; vec_push(&l->tok, '\r'); break;
-			case 't': N; vec_push(&l->tok, '\t'); break;
-			case 'v': N; vec_push(&l->tok, '\v'); break;
-			case '0': case '1': case '2': case '3':
-			case '4': case '5': case '6': case '7':
-				d = 0;
-				while (c >= '0' && c <= '7') {
-					d = d * 8 + (c - '0');
-					N; c = P;
-				}
-				vec_push(&l->tok, d);
-				break;
-			case 'x':
-				d = 0;
-				while (c >= '0' && c <= '9' ||
-				      c >= 'a' && c <= 'f' ||
-				      c >= 'A' && c <= 'F') {
-					if (c >= '0' && c <= '9')
-						d = d * 16 + (c - '0');
-					else if (c >= 'a' && c <= 'f')
-						d = d * 16 + (c - 'a' + 10);
-					else if (c >= 'A' && c <= 'F')
-						d = d * 16 + (c - 'A' + 10);
-					N; c = P;
-				}
-				vec_push(&l->tok, d);
-				break;
-			default: return false;
-			}
 			break;
 		default: N; vec_push(&l->tok, c);; break;
 		}
@@ -261,19 +272,21 @@ static bool lex_stringbody(Lexer *l)
 	return false;
 }
 
-static int lex_char(Lexer *l)
+static unsigned int lex_char(Lexer *l)
 {
 	char c = P;
 	if (c == '\'') {
 		N; char d = P;
 		if (d == '\'') {
-			abort(); // TODO
+			return 256;
 		} else if (d == '\\') {
-			N;
-			abort(); // TODO
+			unsigned int e = lex_escape(l);
+			if (e != 256 && P == '\'') {
+				N; return e;
+			}
 		} else {
-			N; char e = P;
-			if (e == '\'') {
+			N;
+			if (P == '\'') {
 				N; return d;
 			}
 		}
