@@ -363,7 +363,19 @@ static void expr_print(Expr *h)
 	}
 	case EXPR_CHAR_CST: {
 		ExprCHAR_CST *e = (ExprCHAR_CST *) h;
-		printf(" '%c' ", e->v); // TODO: escape
+		putchar('\'');
+		switch(e->v) {
+		case '\\': printf("\\\\"); break;
+		case '\'': printf("\\\'"); break;
+		case '\a': printf("\\a"); break;
+		case '\b': printf("\\b"); break;
+		case '\f': printf("\\f"); break;
+		case '\n': printf("\\n"); break;
+		case '\r': printf("\\r"); break;
+		case '\t': printf("\\t"); break;
+		default: putchar(e->v); break;
+		}
+		putchar('\'');
 		break;
 	}
 	case EXPR_STRING_CST: {
@@ -632,7 +644,7 @@ static void stmt_print(Stmt *h, int level)
 		break;
 	}
 	case STMT_SKIP: {
-		printf("skip;\n");
+		printf("/*skip*/;\n");
 		break;
 	}
 	case STMT_BLOCK: {
