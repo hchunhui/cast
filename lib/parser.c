@@ -1164,13 +1164,12 @@ Stmt *parse_stmt(Parser *p)
 	}
 	case TOK_CASE: {
 		N;
-		F(P == TOK_IDENT);
-		char *id = strdup(PS);
+		Expr *e;
+		F(e = parse_expr(p));
 		Stmt *s;
-		N;
-		F(match(p, ':'), free(id));
-		F(s = parse_stmt(p), free(id));
-		return stmtCASE(id, s);
+		F(match(p, ':'), tree_free(e));
+		F(s = parse_stmt(p), tree_free(e));
+		return stmtCASE(e, s);
 	}
 	case TOK_DEFAULT: {
 		N;

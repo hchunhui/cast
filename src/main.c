@@ -597,7 +597,9 @@ static void stmt_print(Stmt *h, int level)
 	}
 	case STMT_CASE: {
 		StmtCASE *s = (StmtCASE *) h;
-		printf("case %s:\n", s->name);
+		printf("case ");
+		expr_print(s->expr);
+		printf(":\n");
 		stmt_print(s->stmt, level + 1);
 		break;
 	}
