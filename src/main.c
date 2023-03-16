@@ -126,10 +126,11 @@ static Type* type_get_basic(Type *type)
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
 	case TYPE_LDOUBLE:
-	case TYPE_FUN:
 	case TYPE_TYPEDEF:
 	case TYPE_STRUCT:
 		return type;
+	case TYPE_FUN:
+		return type_get_basic(((TypeFUN *) type)->rt);
 	case TYPE_PTR:
 		return type_get_basic(((TypePTR *) type)->t);
 	case TYPE_ARRAY:
@@ -157,12 +158,14 @@ static void type_print_declarator1(Type *type)
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
 	case TYPE_LDOUBLE:
-	case TYPE_FUN:
 	case TYPE_TYPEDEF:
+		return;
+	case TYPE_FUN:
+		type_print_declarator1(((TypeFUN *) type)->rt);
 		return;
 	case TYPE_PTR:
 		type_print_declarator1(((TypePTR *) type)->t);
-		printf("* ( ");
+		printf("( * ");
 		return;
 	case TYPE_ARRAY:
 		type_print_declarator1(((TypeARRAY *) type)->t);
@@ -173,6 +176,7 @@ static void type_print_declarator1(Type *type)
 	}
 }
 
+static void type_print_vardecl(unsigned int flags, Type *type, const char *name);
 static void type_print_declarator2(Type *type)
 {
 	switch(type->type) {
@@ -191,18 +195,31 @@ static void type_print_declarator2(Type *type)
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
 	case TYPE_LDOUBLE:
-	case TYPE_FUN:
 	case TYPE_TYPEDEF:
+		return;
+	case TYPE_FUN:
+		printf("( ");
+		Type *p;
+		int i;
+		vec_foreach(&((TypeFUN *) type)->at, p, i) {
+			if (i) printf(", ");
+			type_print_annot(type_get_basic(type), false);
+			printf(" ");
+			type_print_declarator1(p);
+			type_print_declarator2(p);
+		}
+		printf(" )");
+		type_print_declarator2(((TypeFUN *) type)->rt);
 		return;
 	case TYPE_PTR:
 		printf(" )");
 		type_print_declarator2(((TypePTR *) type)->t);
 		return;
 	case TYPE_ARRAY:
-		printf(" ) [");
+		printf(" [");
 		if (((TypeARRAY *) type)->n)
 			expr_print(((TypeARRAY *) type)->n);
-		printf("]");
+		printf("] )");
 		type_print_declarator2(((TypeARRAY *) type)->t);
 		return;
 	default:
@@ -324,7 +341,21 @@ static void expr_print(Expr *h)
 	}
 	case EXPR_STRING_CST: {
 		ExprSTRING_CST *e = (ExprSTRING_CST *) h;
-		printf(" \"%s\" ", e->v); // TODO: escape
+		putchar('"');
+		for (int i = 0; i < e->len - 1; i++) {
+			switch(e->v[i]) {
+			case '\\': printf("\\\\"); break;
+			case '\"': printf("\\\""); break;
+			case '\a': printf("\\a"); break;
+			case '\b': printf("\\b"); break;
+			case '\f': printf("\\f"); break;
+			case '\n': printf("\\n"); break;
+			case '\r': printf("\\r"); break;
+			case '\t': printf("\\t"); break;
+			default: putchar(e->v[i]); break;
+			}
+		}
+		putchar('"');
 		break;
 	}
 	case EXPR_BOOL_CST: {
@@ -367,11 +398,19 @@ static void expr_print(Expr *h)
 	}
 	case EXPR_BOP: {
 		ExprBOP *e = (ExprBOP *) h;
-		printf(" (");
-		expr_print(e->a);
-		printf(") %s (", bopname(e->op));
-		expr_print(e->b);
-		printf(") ");
+		if (e->op == EXPR_OP_IDX) {
+			printf("((");
+			expr_print(e->a);
+			printf(")[");
+			expr_print(e->b);
+			printf("]) ");
+		} else {
+			printf(" (");
+			expr_print(e->a);
+			printf(") %s (", bopname(e->op));
+			expr_print(e->b);
+			printf(") ");
+		}
 		break;
 	}
 	case EXPR_UOP: {
@@ -522,8 +561,9 @@ static void stmt_print(Stmt *h, int level)
 	}
 	case STMT_SWITCH: {
 		StmtSWITCH *s = (StmtSWITCH *) h;
-		printf("switch ");
+		printf("switch (");
 		expr_print(s->expr);
+		printf(")");
 		stmt_print((Stmt *) (s->block), level + 1);
 		printf(";\n");
 		break;
@@ -619,6 +659,15 @@ static void stmt_print(Stmt *h, int level)
 		printf("typedef ");
 		type_print_vardecl(0, s->type, s->name);
 		printf(" ;\n");
+		break;
+	}
+	case STMT_DECLS: {
+		StmtDECLS *s = (StmtDECLS *) h;
+		Stmt *p;
+		int i;
+		vec_foreach(&s->items, p, i) {
+			stmt_print(p, level);
+		}
 		break;
 	}
 	default:
