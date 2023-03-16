@@ -432,6 +432,18 @@ static void expr_print(Expr *h)
 		printf(") ");
 		break;
 	}
+	case EXPR_INIT: {
+		ExprINIT *e = (ExprINIT *) h;
+		printf(" {");
+		Expr *p;
+		int i;
+		vec_foreach(&e->items, p, i) {
+			if (i) printf(",");
+			expr_print(p);
+		}
+		printf("} ");
+		break;
+	}
 	}
 }
 
@@ -587,6 +599,10 @@ static void stmt_print(Stmt *h, int level)
 		printf("\n");
 		print_level(level);
 		type_print_vardecl(s->flags, s->type, s->name);
+		if (s->init) {
+			printf(" =");
+			expr_print(s->init);
+		}
 		printf(" ;\n");
 		break;
 	}

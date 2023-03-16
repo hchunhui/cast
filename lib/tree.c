@@ -31,6 +31,19 @@ void exprCALL_append(ExprCALL *call, Expr *arg)
 	(void) vec_push(&call->args, arg);
 }
 
+ExprINIT *exprINIT()
+{
+	ExprINIT *t = __new(ExprINIT);
+	t->h.type = EXPR_INIT;
+	vec_init(&t->items);
+	return t;
+}
+
+void exprINIT_append(ExprINIT *init, Expr *e)
+{
+	(void) vec_push(&init->items, e);
+}
+
 StmtBLOCK *stmtBLOCK()
 {
 	StmtBLOCK *t = __new(StmtBLOCK);

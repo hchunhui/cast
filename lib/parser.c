@@ -914,6 +914,47 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 	return block;
 }
 
+static Expr *parse_initializer0(Parser *p)
+{
+	if (P == '{') {
+		N;
+		ExprINIT *init = exprINIT();
+		Expr *e;
+		if (P == '}') {
+			N; return (Expr *) init;
+		}
+
+		F(e = parse_initializer0(p),
+		  tree_free((Expr *) init));
+		exprINIT_append(init, e);
+		while (P == ',') {
+			N;
+			e = parse_initializer0(p);
+			if (!e) {
+				break;
+			}
+			exprINIT_append(init, e);
+		}
+
+		if (P == '}') {
+			N; return (Expr *) init;
+		}
+
+		tree_free((Expr *) init);
+		return NULL;
+	}
+	return parse_assignment_expr(p);
+}
+
+static Expr *parse_initializer(Parser *p)
+{
+	if (P == '=') {
+		N;
+		return parse_initializer0(p);
+	}
+	return NULL;
+}
+
 Stmt *parse_decl(Parser *p)
 {
 	Declarator d = parse_type1(p);
@@ -945,7 +986,7 @@ Stmt *parse_decl(Parser *p)
 	if (d.type->type == TYPE_FUN) {
 		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL);
 	} else {
-		decl1 = stmtVARDECL(d.flags, d.ident, d.type, NULL);
+		decl1 = stmtVARDECL(d.flags, d.ident, d.type, parse_initializer(p));
 	}
 
 	if (P == ';') {
@@ -969,7 +1010,7 @@ Stmt *parse_decl(Parser *p)
 			if (dd.type->type == TYPE_FUN) {
 				decl1 = stmtFUNDECL(dd.flags, dd.ident, (TypeFUN *) dd.type, dd.funargs, NULL);
 			} else {
-				decl1 = stmtVARDECL(dd.flags, dd.ident, dd.type, NULL);
+				decl1 = stmtVARDECL(dd.flags, dd.ident, dd.type, parse_initializer(p));
 			}
 			stmtDECLS_append(decls, decl1);
 		}

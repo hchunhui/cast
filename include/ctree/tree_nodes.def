@@ -44,6 +44,7 @@ EXPR(EXPR,       Expr *, e)
 EXPR(CAST,       Type *, t, Expr *, e)
 EXPR(SIZEOF,     Expr *, e)
 EXPR(SIZEOFT,    Type *, t)
+//EXPR(INIT)
 
 STMT(EXPR,  Expr *, expr)
 STMT(IF,    Expr *, cond, Stmt *, body1, Stmt *, body2)

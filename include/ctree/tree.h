@@ -26,6 +26,7 @@ typedef struct Tree_ {
 #undef EXPR
 #define EXPR(id, ...)
 		EXPR_CALL,
+		EXPR_INIT,
 
 #undef  TYPE
 #define TYPE(id, ...) TYPE_##id,
@@ -120,6 +121,14 @@ typedef struct ExprCALL_ {
 
 ExprCALL *exprCALL(Expr *func);
 void exprCALL_append(ExprCALL *call, Expr *arg);
+
+typedef struct ExprINIT_ {
+	Expr h;
+	vec_expr_t items;
+} ExprINIT;
+
+ExprINIT *exprINIT();
+void exprINIT_append(ExprINIT *init, Expr *e);
 
 typedef vec_t(Stmt*) vec_stmt_t;
 
