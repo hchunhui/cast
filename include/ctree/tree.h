@@ -6,6 +6,8 @@
 #define DFLAG_STATIC 2
 #define DFLAG_INLINE 4
 
+typedef struct EnumList_ EnumList;
+
 typedef struct Tree_ {
 	enum {
 #define STMT(id, ...)
@@ -146,6 +148,17 @@ typedef struct StmtDECLS_ {
 } StmtDECLS;
 StmtDECLS *stmtDECLS();
 void stmtDECLS_append(StmtDECLS *decls, Stmt *i);
+
+
+struct EnumPair_ {
+	const char *id;
+	Expr *val;
+};
+typedef vec_t(struct EnumPair_) vec_epair_t;
+
+struct EnumList_ {
+	vec_epair_t items;
+};
 
 #define STMT(id, ...) typedef struct Stmt##id##_ Stmt##id;
 #define EXPR(id, ...) typedef struct Expr##id##_ Expr##id;

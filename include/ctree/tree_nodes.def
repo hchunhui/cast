@@ -19,6 +19,7 @@ TYPE(PTR, Type *, t)
 TYPE(ARRAY, Type *, t, Expr *, n)
 TYPE(STRUCT, bool, is_union, const char *, tag, StmtBLOCK *, decls)
 TYPE(TYPEDEF, const char *, name)
+TYPE(ENUM, const char *, tag, EnumList *, list)
 
 EXPR(INT_CST,    int, v)
 EXPR(LONG_CST,   long, v)

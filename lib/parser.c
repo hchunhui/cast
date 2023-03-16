@@ -718,6 +718,28 @@ static int parse_declarator(Parser *p, Declarator *d)
 	return 1;
 }
 
+static struct EnumPair_ parse_enum_pair(Parser *p)
+{
+	struct EnumPair_ ret = {NULL, NULL};
+	if (P == TOK_IDENT) {
+		int sv = symlookup(p, PS);
+		if (sv == SYM_UNKNOWN) {
+			symset(p, PS, SYM_IDENT);
+			ret.id = strdup(PS);
+			N;
+			if (P == '=') {
+				N;
+				ret.val = parse_assignment_expr(p);
+				if (!ret.val) {
+					free((char *) ret.id);
+					ret.id = NULL;
+				}
+			}
+		}
+	}
+	return ret;
+}
+
 static StmtBLOCK *parse_stmts(Parser *p);
 static Declarator parse_type1(Parser *p)
 {
@@ -832,6 +854,50 @@ static Declarator parse_type1(Parser *p)
 				F_(match(p, '}'), err, tree_free(&decls->h));
 			}
 			d.type = typeSTRUCT(is_union, tag, decls);
+			break;
+		}
+		case TOK_ENUM:
+		{
+			N;
+			F_(d.type == NULL, err);
+			char *tag = NULL;
+			StmtBLOCK *decls = NULL;
+			if (P == TOK_IDENT) {
+				tag = strdup(PS);
+				N;
+			}
+
+			EnumList *list = malloc(sizeof(EnumList));
+			vec_init(&(list->items));
+			if (P == '{') {
+				N;
+				struct EnumPair_ pair = parse_enum_pair(p);
+				if (pair.id) {
+					vec_push(&(list->items), pair);
+					while (P == ',') {
+						N;
+						pair = parse_enum_pair(p);
+						if (pair.id == NULL)
+							break;
+						vec_push(&(list->items), pair);
+					}
+				}
+				if (P == '}') {
+					N;
+					d.type = typeENUM(tag, list);
+					break;
+				}
+				struct EnumPair_ *p;
+				int i;
+				vec_foreach_ptr(&list->items, p, i) {
+					free((char *) (p->id));
+					free(p->val);
+				}
+				vec_deinit(&(list->items));
+				free(list);
+				return err;
+			}
+			d.type = typeENUM(tag, list);
 			break;
 		}
 		default:

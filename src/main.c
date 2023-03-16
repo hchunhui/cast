@@ -102,6 +102,32 @@ static void type_print_annot(Type *type, bool simple)
 		}
 		break;
 	}
+	case TYPE_ENUM: {
+		TypeENUM *t = (TypeENUM *) type;
+		printf("enum");
+		if (t->tag) printf(" %s", t->tag);
+		if (t->list) {
+			if (simple) {
+				printf(" {/* ... */}");
+			} else {
+				printf(" {");
+				struct EnumPair_ *p;
+				int i;
+				vec_foreach_ptr(&(t->list->items), p, i) {
+					printf("%s", p->id);
+					if (p->val) {
+						printf(" =");
+						expr_print(p->val);
+						printf(",\n");
+					} else {
+						printf(",\n");
+					}
+				}
+				printf("}");
+			}
+		}
+		break;
+	}
 	default:
 		assert(false);
 		break;
@@ -128,6 +154,7 @@ static Type* type_get_basic(Type *type)
 	case TYPE_LDOUBLE:
 	case TYPE_TYPEDEF:
 	case TYPE_STRUCT:
+	case TYPE_ENUM:
 		return type;
 	case TYPE_FUN:
 		return type_get_basic(((TypeFUN *) type)->rt);
