@@ -1115,6 +1115,9 @@ Stmt *parse_stmt(Parser *p)
 	}
 	case TOK_RETURN: {
 		N;
+		if (P == ';') {
+			N; return stmtRETURN(NULL);
+		}
 		Expr *e;
 		F(e = parse_expr(p));
 		F(match(p, ';'), tree_free(e));

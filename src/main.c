@@ -553,9 +553,13 @@ static void stmt_print(Stmt *h, int level)
 	}
 	case STMT_RETURN: {
 		StmtRETURN *s = (StmtRETURN *) h;
-		printf("return (");
-		expr_print(s->expr);
-		printf(") ;\n");
+		if (s->expr) {
+			printf("return (");
+			expr_print(s->expr);
+			printf(") ;\n");
+		} else {
+			printf("return;\n");
+		}
 		break;
 	}
 	case STMT_SKIP: {
