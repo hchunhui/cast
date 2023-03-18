@@ -60,6 +60,12 @@ void parser_delete(Parser *p)
 	free(p);
 }
 
+static Type *type_copy(Type *t)
+{
+	// TODO
+	return t;
+}
+
 #define P lexer_peek(p->lexer)
 #define PS lexer_peek_string(p->lexer)
 #define PSL lexer_peek_string_len(p->lexer)
@@ -661,7 +667,7 @@ static void fix_type(Declarator *d, Type *btype)
 	d->type = tnew;
 }
 
-static Declarator parse_type1(Parser *p);
+static Declarator parse_type1(Parser *p, Type **pbtype);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
 	if (P == '*') {
@@ -699,7 +705,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				d->type = &n->h;
 			} else {
 				d->funargs = stmtBLOCK();
-				Declarator d1 = parse_type1(p);
+				Declarator d1 = parse_type1(p, NULL);
 				if (d1.type == NULL) {
 					tree_free(&n->h);
 				} else if (d1.type->type == TYPE_VOID &&
@@ -719,7 +725,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						n->va_arg = true;
 						break;
 					}
-					d1 = parse_type1(p);
+					d1 = parse_type1(p, NULL);
 					if (d1.type == NULL) {
 						tree_free(&n->h);
 					}
@@ -768,7 +774,7 @@ static struct EnumPair_ parse_enum_pair(Parser *p)
 }
 
 static StmtBLOCK *parse_stmts(Parser *p);
-static Declarator parse_type1(Parser *p)
+static Declarator parse_type1(Parser *p, Type **pbtype)
 {
 	Declarator d, err;
 	d.is_typedef = false;
@@ -978,6 +984,8 @@ static Declarator parse_type1(Parser *p)
 		}
 	}
 	F_(d.type, err);
+	if (pbtype)
+		*pbtype = d.type;
 	F_(parse_declarator(p, &d), err);
 	return d;
 }
@@ -1051,7 +1059,8 @@ static Expr *parse_initializer(Parser *p)
 
 Stmt *parse_decl(Parser *p)
 {
-	Declarator d = parse_type1(p);
+	Type *btype;
+	Declarator d = parse_type1(p, &btype);
 	tree_free(&d.funargs->h);
 	F(d.type);
 
@@ -1091,7 +1100,7 @@ Stmt *parse_decl(Parser *p)
 		while (P == ',') {
 			N;
 			Declarator dd = d;
-			//dd.type = type_copy(dd.type);
+			dd.type = type_copy(btype);
 			dd.ident = NULL;
 			dd.funargs = NULL;
 			parse_declarator(p, &dd);
@@ -1270,7 +1279,7 @@ Stmt *parse_stmt(Parser *p)
 
 Type *parse_type(Parser *p)
 {
-	Declarator d = parse_type1(p);
+	Declarator d = parse_type1(p, NULL);
 	free(d.ident);
 	tree_free(&d.funargs->h);
 	return d.type;
