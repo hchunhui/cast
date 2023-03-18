@@ -597,7 +597,16 @@ static void stmt_print(Stmt *h, int level)
 		break;
 	}
 	case STMT_FOR99: {
-		abort();
+		StmtFOR99 *s = (StmtFOR99 *) h;
+		printf("for (");
+		stmt_print((Stmt *) s->init, 0);
+		if (s->cond) expr_print(s->cond);
+		printf(";");
+		if (s->step) expr_print(s->step);
+		printf(")\n");
+		stmt_print(s->body, level + 1);
+		printf("\n");
+		break;
 	}
 	case STMT_BREAK: {
 		printf("break;\n");

@@ -1137,16 +1137,24 @@ Stmt *parse_stmt(Parser *p)
 	case TOK_FOR: {
 		N;
 		Expr *init, *cond, *step;
-		Stmt *body;
+		Stmt *init99, *body;
 		F(match(p, '('));
-		init = parse_expr(p);
-		F(match(p, ';'), tree_free(init));
+		init99 = parse_decl(p);
+		if (init99) {
+			F((init99->type == STMT_VARDECL), tree_free(init99));
+		} else {
+			init = parse_expr(p);
+			F(match(p, ';'), tree_free(init));
+		}
 		cond = parse_expr(p);
 		F(match(p, ';'), tree_free(init), tree_free(cond));
 		step = parse_expr(p);
 		F(match(p, ')'), tree_free(init), tree_free(cond), tree_free(step));
 		F(body = parse_stmt(p), tree_free(init), tree_free(cond), tree_free(step));
-		return stmtFOR(init, cond, step, body);
+		if (init99)
+			return stmtFOR99((StmtVARDECL *) init99, cond, step, body);
+		else
+			return stmtFOR(init, cond, step, body);
 	}
 	case TOK_BREAK: {
 		N;
