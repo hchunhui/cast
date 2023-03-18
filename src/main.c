@@ -235,7 +235,7 @@ static void type_print_declarator2(Type *type)
 		int i;
 		vec_foreach(&((TypeFUN *) type)->at, p, i) {
 			if (i) printf(", ");
-			type_print_annot(type_get_basic(type), false);
+			type_print_annot(type_get_basic(p), false);
 			printf(" ");
 			type_print_declarator1(p);
 			type_print_declarator2(p);
