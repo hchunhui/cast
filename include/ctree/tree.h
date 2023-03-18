@@ -6,6 +6,10 @@
 #define DFLAG_STATIC 2
 #define DFLAG_INLINE 4
 
+#define TFLAG_CONST 1
+#define TFLAG_VOLATILE 2
+#define TFLAG_RESTRICT 4
+
 typedef struct EnumList_ EnumList;
 
 typedef struct Tree_ {

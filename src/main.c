@@ -14,10 +14,48 @@ static void decl_flags_print(unsigned int flags)
 		printf("inline ");
 }
 
+static void type_flags_print(Type *t)
+{
+	unsigned int flags = 0;
+	switch(t->type) {
+	case TYPE_VOID: flags = ((TypeVOID *) t)->flags; break;
+	case TYPE_INT: flags = ((TypeINT *) t)->flags; break;
+	case TYPE_SHORT: flags = ((TypeSHORT *) t)->flags; break;
+	case TYPE_LONG: flags = ((TypeLONG *) t)->flags; break;
+	case TYPE_LLONG: flags = ((TypeLLONG *) t)->flags; break;
+	case TYPE_UINT: flags = ((TypeUINT *) t)->flags; break;
+	case TYPE_USHORT: flags = ((TypeUSHORT *) t)->flags; break;
+	case TYPE_ULONG: flags = ((TypeULONG *) t)->flags; break;
+	case TYPE_ULLONG: flags = ((TypeULLONG *) t)->flags; break;
+	case TYPE_BOOL: flags = ((TypeBOOL *) t)->flags; break;
+	case TYPE_FLOAT: flags = ((TypeFLOAT *) t)->flags; break;
+	case TYPE_LDOUBLE: flags = ((TypeLDOUBLE *) t)->flags; break;
+	case TYPE_DOUBLE: flags = ((TypeDOUBLE *) t)->flags; break;
+	case TYPE_CHAR: flags = ((TypeCHAR *) t)->flags; break;
+	case TYPE_UCHAR: flags = ((TypeUCHAR *) t)->flags; break;
+	case TYPE_PTR: flags = ((TypePTR *) t)->flags; break;
+	case TYPE_ARRAY: flags = ((TypeARRAY *) t)->flags; break;
+	case TYPE_FUN: break;
+	case TYPE_TYPEDEF: flags = ((TypeTYPEDEF *) t)->flags; break;
+	case TYPE_STRUCT:  flags = ((TypeSTRUCT *) t)->flags; break;
+	case TYPE_ENUM: flags = ((TypeENUM *) t)->flags; break;
+	default:
+		assert(false);
+		break;
+	}
+	if (flags & TFLAG_CONST)
+		printf("const ");
+	if (flags & TFLAG_RESTRICT)
+		printf("restrict ");
+	if (flags & TFLAG_VOLATILE)
+		printf("volatile ");
+}
+
 static void expr_print(Expr *h);
 static void stmt_print(Stmt *h, int level);
 static void type_print_annot(Type *type, bool simple)
 {
+	type_flags_print(type);
 	switch(type->type) {
 	case TYPE_VOID:
 		printf("void");
@@ -251,6 +289,7 @@ static void type_print_declarator2(Type *type)
 		return;
 	case TYPE_ARRAY:
 		printf(" [");
+		type_flags_print(type);
 		if (((TypeARRAY *) type)->n)
 			expr_print(((TypeARRAY *) type)->n);
 		printf("] )");

@@ -667,18 +667,36 @@ static void fix_type(Declarator *d, Type *btype)
 	d->type = tnew;
 }
 
+static unsigned int parse_type_qualifier(Parser *p)
+{
+	unsigned int flags = 0;
+	bool progress = true;
+	while (progress) {
+		progress = false;
+		if (P == TOK_CONST) {
+			N; flags |= TFLAG_CONST;
+			progress = true;
+		}
+		if (P == TOK_VOLATILE) {
+			N; flags |= TFLAG_VOLATILE;
+			progress = true;
+		}
+		if (P == TOK_RESTRICT) {
+			N; flags |= TFLAG_RESTRICT;
+			progress = true;
+		}
+	}
+	return flags;
+}
+
 static Declarator parse_type1(Parser *p, Type **pbtype);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
 	if (P == '*') {
 		N;
+		unsigned int flags = parse_type_qualifier(p);
 		F(parse_declarator0(p, d));
-		d->type = typePTR(d->type);
-		return 1;
-	}
-	if (P == TOK_CONST || P == TOK_VOLATILE || P == TOK_RESTRICT) { // TODO
-		N;
-		F(parse_declarator0(p, d));
+		d->type = typePTR(d->type, flags);
 		return 1;
 	}
 	if (P == TOK_IDENT) {
@@ -693,10 +711,11 @@ static int parse_declarator0(Parser *p, Declarator *d)
 	while (1) {
 		if (P == '[') {
 			N;
+			unsigned int flags = parse_type_qualifier(p);
 			Expr *e;
 			e = parse_assignment_expr(p);
 			F(match(p, ']'), tree_free(e));
-			d->type = typeARRAY(d->type, e);
+			d->type = typeARRAY(d->type, e, flags);
 		} else if (P == '(') {
 			N;
 			TypeFUN *n = typeFUN(d->type);
@@ -787,6 +806,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 	err.type = NULL;
 	err.ident = NULL;
 	err.funargs = NULL;
+	unsigned int tflags = 0;
 
 	int is_signed = 0;
 	int is_unsigned = 0;
@@ -818,8 +838,12 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			N; break;
 		// type-qualifier TODO
 		case TOK_CONST:
+			tflags |= TFLAG_CONST;
+			N; break;
 		case TOK_RESTRICT:
+			tflags |= TFLAG_RESTRICT;
 		case TOK_VOLATILE:
+			tflags |= TFLAG_VOLATILE;
 			N; break;
 		// function-specifier TODO
 		case TOK_INLINE:
@@ -861,7 +885,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			if (sv == SYM_TYPE) {
 				int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
 				if (d.type == NULL && tcount == 0) {
-					d.type = typeTYPEDEF(strdup(PS));
+					d.type = typeTYPEDEF(strdup(PS), tflags);
 					N;
 					break;
 				}
@@ -886,7 +910,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 				decls = parse_stmts(p);
 				F_(match(p, '}'), err, tree_free(&decls->h));
 			}
-			d.type = typeSTRUCT(is_union, tag, decls);
+			d.type = typeSTRUCT(is_union, tag, decls, tflags);
 			break;
 		}
 		case TOK_ENUM:
@@ -917,7 +941,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 				}
 				if (P == '}') {
 					N;
-					d.type = typeENUM(tag, list);
+					d.type = typeENUM(tag, list, tflags);
 					break;
 				}
 				struct EnumPair_ *p;
@@ -930,7 +954,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 				free(list);
 				return err;
 			}
-			d.type = typeENUM(tag, list);
+			d.type = typeENUM(tag, list, tflags);
 			break;
 		}
 		default:
@@ -950,35 +974,35 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 		if (tcount == 0 || is_int) {
 			if (is_short) {
 				if (long_count == 0) {
-					d.type = is_unsigned ? typeUSHORT() : typeSHORT();
+					d.type = is_unsigned ? typeUSHORT(tflags) : typeSHORT(tflags);
 				}
 			} else if (long_count == 0) {
 				if (tcount || scount) {
-					d.type = is_unsigned ? typeUINT() : typeINT();
+					d.type = is_unsigned ? typeUINT(tflags) : typeINT(tflags);
 				}
 			} else if (long_count == 1) {
-				d.type = is_unsigned ? typeULONG() : typeLONG();
+				d.type = is_unsigned ? typeULONG(tflags) : typeLONG(tflags);
 			} else if (long_count == 2) {
-				d.type = is_unsigned ? typeULLONG() : typeLLONG();
+				d.type = is_unsigned ? typeULLONG(tflags) : typeLLONG(tflags);
 			}
 		} else {
 			if (is_short + long_count == 0) {
 				if (is_char) {
 					if (is_char)
-						d.type = is_unsigned ? typeUCHAR() : typeCHAR();
+						d.type = is_unsigned ? typeUCHAR(tflags) : typeCHAR(tflags);
 				} else if (scount == 0) {
 					if (is_bool)
-						d.type = typeBOOL();
+						d.type = typeBOOL(tflags);
 					else if (is_float)
-						d.type = typeFLOAT();
+						d.type = typeFLOAT(tflags);
 					else if (is_double)
-						d.type = typeDOUBLE();
+						d.type = typeDOUBLE(tflags);
 					else if (is_void)
-						d.type = typeVOID();
+						d.type = typeVOID(tflags);
 				}
 			} else {
 				if (is_double && long_count == 1 && !is_short) {
-					d.type = typeLDOUBLE();
+					d.type = typeLDOUBLE(tflags);
 				}
 			}
 		}
