@@ -7,70 +7,140 @@
 #include "vec.h"
 #include "map.h"
 
+typedef struct {
+	char (*peek)(TextStream *);
+	void (*next)(TextStream *);
+	void (*prev)(TextStream *);
+	void (*del)(TextStream *);
+} TextStreamOps;
+
 struct TextStream_ {
-	char *buf;
-	long len;
-	long i;
+	const TextStreamOps *ops;
 };
-
-static void text_stream_init(TextStream *ts, const char *file)
-{
-	FILE *fp = fopen(file, "r");
-	fseek(fp, 0, SEEK_END);
-	long len = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	char *buf = (char *) malloc(len);
-	fread(buf, 1, len, fp);
-	fclose(fp);
-	ts->buf = buf;
-	ts->len = len;
-	ts->i = 0;
-}
-
-static void text_stream_free(TextStream *ts)
-{
-	free(ts->buf);
-}
-
-TextStream *text_stream_new(const char *file)
-{
-	TextStream *self = malloc(sizeof(TextStream));
-	text_stream_init(self, file);
-	return self;
-}
-
-TextStream *text_stream_from_string(const char *string)
-{
-	TextStream *self = malloc(sizeof(TextStream));
-	self->buf = strdup(string);
-	self->len = strlen(string);
-	self->i = 0;
-	return self;
-}
 
 void text_stream_delete(TextStream *ts)
 {
-	text_stream_free(ts);
-	free(ts);
+	ts->ops->del(ts);
 }
 
 char text_stream_peek(TextStream *ts)
 {
-	if (ts->i < ts->len) {
-		return ts->buf[ts->i];
+	return ts->ops->peek(ts);
+}
+
+void text_stream_next(TextStream *ts)
+{
+	ts->ops->next(ts);
+}
+
+void text_stream_prev(TextStream *ts)
+{
+	ts->ops->prev(ts);
+}
+
+typedef struct {
+	TextStream h;
+	FILE *fp;
+	int c;
+} FileTextStream;
+
+static void file_text_stream_delete(TextStream *ts)
+{
+	FileTextStream *ios = (FileTextStream *) ts;
+	fclose(ios->fp);
+	free(ts);
+}
+
+static char file_text_stream_peek(TextStream *ts)
+{
+	FileTextStream *ios = (FileTextStream *) ts;
+	if (ios->c == EOF)
+		return 0;
+	return ios->c;
+}
+
+static void file_text_stream_next(TextStream *ts)
+{
+	FileTextStream *ios = (FileTextStream *) ts;
+	ios->c = fgetc(ios->fp);
+}
+
+static void file_text_stream_prev(TextStream *ts)
+{
+	FileTextStream *ios = (FileTextStream *) ts;
+	if (ios->c != EOF)
+		ungetc(ios->c, ios->fp);
+}
+
+static const TextStreamOps file_text_stream_ops = {
+	file_text_stream_peek, file_text_stream_next,
+	file_text_stream_prev, file_text_stream_delete,
+};
+
+typedef struct {
+	TextStream h;
+	char *buf;
+	long len;
+	long i;
+} MemTextStream;
+
+static void mem_text_stream_delete(TextStream *ts)
+{
+	MemTextStream *ms = (MemTextStream *) ts;
+	free(ms->buf);
+	free(ts);
+}
+
+static char mem_text_stream_peek(TextStream *ts)
+{
+	MemTextStream *ms = (MemTextStream *) ts;
+	if (ms->i < ms->len) {
+		return ms->buf[ms->i];
 	} else {
 		return 0;
 	}
 }
 
-char text_stream_next(TextStream *ts)
+static void mem_text_stream_next(TextStream *ts)
 {
-	ts->i++;
+	MemTextStream *ms = (MemTextStream *) ts;
+	ms->i++;
 }
 
-char text_stream_prev(TextStream *ts)
+static void mem_text_stream_prev(TextStream *ts)
 {
-	ts->i--;
+	MemTextStream *ms = (MemTextStream *) ts;
+	ms->i--;
+}
+
+static const TextStreamOps mem_text_stream_ops = {
+	mem_text_stream_peek, mem_text_stream_next,
+	mem_text_stream_prev, mem_text_stream_delete,
+};
+
+TextStream *text_stream_new(const char *file)
+{
+	FileTextStream *ios = malloc(sizeof(FileTextStream));
+	if (strcmp(file, "-") == 0)
+		ios->fp = stdin;
+	else
+		ios->fp = fopen(file, "r");
+	if (ios->fp)
+		ios->c = fgetc(ios->fp);
+	else
+		ios->c = EOF;
+	ios->h.ops = &file_text_stream_ops;
+	return &ios->h;
+}
+
+TextStream *text_stream_from_string(const char *string)
+{
+	MemTextStream *ms = malloc(sizeof(MemTextStream));
+	ms->buf = strdup(string);
+	ms->len = strlen(string);
+	ms->i = 0;
+	ms->h.ops = &mem_text_stream_ops;
+	return &ms->h;
 }
 
 struct Lexer_ {

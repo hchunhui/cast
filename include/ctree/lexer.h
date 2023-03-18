@@ -7,7 +7,7 @@ TextStream *text_stream_new(const char *file);
 TextStream *text_stream_from_string(const char *string);
 void text_stream_delete(TextStream *ts);
 char text_stream_peek(TextStream *ts);
-char text_stream_next(TextStream *ts);
+void text_stream_next(TextStream *ts);
 
 typedef struct Lexer_ Lexer;
 enum {
