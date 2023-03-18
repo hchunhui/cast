@@ -41,6 +41,7 @@ void text_stream_prev(TextStream *ts)
 typedef struct {
 	TextStream h;
 	FILE *fp;
+	int c0;
 	int c;
 } FileTextStream;
 
@@ -62,14 +63,15 @@ static char file_text_stream_peek(TextStream *ts)
 static void file_text_stream_next(TextStream *ts)
 {
 	FileTextStream *ios = (FileTextStream *) ts;
+	ios->c0 = ios->c;
 	ios->c = fgetc(ios->fp);
 }
 
 static void file_text_stream_prev(TextStream *ts)
 {
 	FileTextStream *ios = (FileTextStream *) ts;
-	if (ios->c != EOF)
-		ungetc(ios->c, ios->fp);
+	ungetc(ios->c, ios->fp);
+	ios->c = ios->c0;
 }
 
 static const TextStreamOps file_text_stream_ops = {
