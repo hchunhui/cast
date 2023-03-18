@@ -75,6 +75,7 @@ char text_stream_prev(TextStream *ts)
 
 struct Lexer_ {
 	TextStream *ts;
+	bool hol;
 	map_int_t kws;
 
 	int tok_type;
@@ -333,8 +334,13 @@ LEX(alphadigit_, \
     (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || \
     (c >= '0' && c <= '9') || c == '_')
 LEX(digit, (c >= '0' && c <= '9'))
-LEX(space, c == ' ' || c == '\t' || c == '\n' || \
+
+LEX(space, c == ' ' || c == '\t' || \
     c == '\r' || c == '\v' || c == '\f')
+LEX(sharp, c == '#')
+LEX(newline, c == '\n')
+LEX(not_newline, c != '\n')
+
 LEX(strchar, c != '"' && c != '\\')
 LEX(quote, c == '"')
 LEX(uU, c == 'u' || c == 'U')
@@ -391,6 +397,24 @@ static bool lex_many_ignore(Lexer *l, lex_func_t lex)
 	}
 }
 
+static void skip_spaces(Lexer *l)
+{
+	while (true) {
+		lex_many_ignore(l, lex_space);
+		if (l->hol) {
+			if (lex_one_ignore(l, lex_sharp)) {
+				lex_many_ignore(l, lex_not_newline);
+			}
+			l->hol = false;
+		}
+		if (lex_many_ignore(l, lex_newline)) {
+			l->hol = true;
+		} else {
+			break;
+		}
+	}
+}
+
 static void handle_int_cst(Lexer *l, int base)
 {
 	char *endp;
@@ -430,7 +454,7 @@ static void handle_int_cst(Lexer *l, int base)
 void lexer_next(Lexer *l)
 {
 	vec_clear(&l->tok);
-	lex_many_ignore(l, lex_space);
+	skip_spaces(l);
 	if (lex_one(l, lex_alpha_)) {
 		lex_many(l, lex_alphadigit_);
 		vec_push(&l->tok, 0);
@@ -481,7 +505,7 @@ void lexer_next(Lexer *l)
 					l->tok_type = TOK_ERROR;
 					return;
 				}
-				lex_many_ignore(l, lex_space);
+				skip_spaces(l);
 			} while (lex_one_ignore(l, lex_quote));
 			vec_push(&l->tok, 0);
 			l->tok_type = TOK_STRING_CST;
@@ -530,6 +554,7 @@ char lexer_peek_char(Lexer *l)
 static void lexer_init(Lexer *l, TextStream *ts)
 {
 	l->ts = ts;
+	l->hol = true;
 	vec_init(&l->tok);
 
 	map_init(&l->kws);
