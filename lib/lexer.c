@@ -156,6 +156,7 @@ struct Lexer_ {
 		long long int_cst;
 		unsigned long long uint_cst;
 		char char_cst;
+		double float_cst;
 	} u;
 };
 
@@ -422,6 +423,11 @@ LEX(0, c == '0')
 LEX(xX, c == 'x' || c == 'X')
 LEX(hex, (c >= '0' && c <= '9') || \
     (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+LEX(dot, c == '.')
+LEX(eE, c == 'e' || c == 'E')
+LEX(sign, c == '+' || c == '-')
+LEX(fF, c == 'f' || c == 'F')
+LEX(lL, c == 'l' || c == 'L')
 
 typedef char (*lex_func_t)(Lexer *);
 
@@ -523,6 +529,63 @@ static void handle_int_cst(Lexer *l, int base)
 	}
 }
 
+static bool lex_float(Lexer *l)
+{
+	if (lex_one(l, lex_dot)) {
+		if (lex_many(l, lex_digit)) {
+			if (lex_one(l, lex_eE)) {
+				lex_one(l, lex_sign);
+				if (lex_many(l, lex_digit)) {
+					vec_push(&l->tok, 0);
+				} else {
+					l->tok_type = TOK_ERROR;
+					return false;
+				}
+			} else {
+				vec_push(&l->tok, 0);
+			}
+		} else {
+			if (l->tok.length == 1) {
+				vec_pop(&l->tok);
+				U;
+				return false;
+			} else {
+				if (lex_one(l, lex_eE)) {
+					lex_one(l, lex_sign);
+					if (lex_many(l, lex_digit)) {
+						vec_push(&l->tok, 0);
+					} else {
+						l->tok_type = TOK_ERROR;
+						return false;
+					}
+				} else {
+					vec_push(&l->tok, 0);
+				}
+			}
+		}
+		fprintf(stderr, "try: %s\n", l->tok.data);
+		char *endp;
+		if (lex_one_ignore(l, lex_fF)) {
+			l->u.float_cst = strtof(l->tok.data, &endp);
+			if (*endp != '\0') {
+				l->tok_type = TOK_ERROR;
+			} else {
+				l->tok_type = TOK_FLOAT_CST;
+			}
+		} else {
+			lex_one_ignore(l, lex_lL);
+			l->u.float_cst = strtod(l->tok.data, &endp);
+			if (*endp != '\0') {
+				l->tok_type = TOK_ERROR;
+			} else {
+				l->tok_type = TOK_DOUBLE_CST;
+			}
+		}
+	} else {
+		return false;
+	}
+}
+
 void lexer_next(Lexer *l)
 {
 	vec_clear(&l->tok);
@@ -547,23 +610,32 @@ void lexer_next(Lexer *l)
 			}
 		} else {
 			if (lex_many(l, lex_digit)) {
-				vec_push(&l->tok, 0);
-				if (l->tok.data[0] == '0') {
-					handle_int_cst(l, 8);
-				} else {
-					handle_int_cst(l, 10);
+				if (!lex_float(l)) {
+					vec_push(&l->tok, 0);
+					if (l->tok.data[0] == '0') {
+						handle_int_cst(l, 8);
+					} else {
+						handle_int_cst(l, 10);
+					}
 				}
 			} else {
-				vec_push(&l->tok, 0);
-				handle_int_cst(l, 10); // zero
+				if (!lex_float(l)) {
+					vec_push(&l->tok, 0);
+					handle_int_cst(l, 10); // zero
+				}
 			}
 		}
 	} else if (lex_many(l, lex_digit)) {
-		vec_push(&l->tok, 0);
-		handle_int_cst(l, 10);
+		if (!lex_float(l)) {
+			vec_push(&l->tok, 0);
+			handle_int_cst(l, 10);
+		}
 	} else if (text_stream_peek(l->ts) == 0) {
 		l->tok_type = TOK_END;
 	} else {
+		if (lex_float(l)) {
+			return;
+		}
 		int type = lex_punct(l);
 		if (type) {
 			l->tok_type = type;
@@ -621,6 +693,11 @@ unsigned long long lexer_peek_uint(Lexer *l)
 char lexer_peek_char(Lexer *l)
 {
 	return l->u.char_cst;
+}
+
+double lexer_peek_float(Lexer *l)
+{
+	return l->u.float_cst;
 }
 
 static void lexer_init(Lexer *l, TextStream *ts)

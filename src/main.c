@@ -486,6 +486,16 @@ static void expr_print(Expr *h)
 		printf(" %s ", e->v ? "true" : "false");
 		break;
 	}
+	case EXPR_FLOAT_CST: {
+		ExprFLOAT_CST *e = (ExprFLOAT_CST *) h;
+		printf(" %.20ef ", e->v);
+		break;
+	}
+	case EXPR_DOUBLE_CST: {
+		ExprDOUBLE_CST *e = (ExprDOUBLE_CST *) h;
+		printf(" %.20e ", e->v);
+		break;
+	}
 	case EXPR_IDENT: {
 		ExprIDENT *e = (ExprIDENT *) h;
 		printf(" %s ", e->id);

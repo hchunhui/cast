@@ -73,6 +73,7 @@ static Type *type_copy(Type *t)
 #define PSL lexer_peek_string_len(p->lexer)
 #define PI lexer_peek_int(p->lexer)
 #define PUI lexer_peek_uint(p->lexer)
+#define PF lexer_peek_float(p->lexer)
 #define PC lexer_peek_char(p->lexer)
 #define N lexer_next(p->lexer)
 #define F_(cond, errval, ...) do { if (!(cond)) { __VA_ARGS__; return errval; } } while (0)
@@ -136,6 +137,14 @@ static Expr *parse_primary_expr(Parser *p)
 		char *str = malloc(len);
 		memcpy(str, PS, len);
 		N; return exprSTRING_CST(str, len);
+	}
+	case TOK_FLOAT_CST: {
+		float i = PF;
+		N; return exprFLOAT_CST(i);
+	}
+	case TOK_DOUBLE_CST: {
+		double i = PF;
+		N; return exprDOUBLE_CST(i);
 	}
 	case '(':
 		N; return parse_parentheses_post(p);
