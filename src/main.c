@@ -61,6 +61,9 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_CHAR:
 		printf("char");
 		break;
+	case TYPE_UCHAR:
+		printf("unsigned char");
+		break;
 	case TYPE_PTR:
 		printf("pointer( ");
 		type_print_annot(((TypePTR *) type)->t, simple);
