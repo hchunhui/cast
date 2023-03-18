@@ -9,6 +9,7 @@ TypeFUN *typeFUN(Type *rt)
 	t->h.type = TYPE_FUN;
 	t->rt = rt;
 	vec_init(&t->at);
+	t->va_arg = false;
 	return t;
 }
 

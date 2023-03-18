@@ -39,7 +39,8 @@ static void symset(Parser *p, const char *sym, int sv)
 static void parser_init(Parser *p, Lexer *l)
 {
 	p->lexer = l;
-	p->symtop = 0;
+	p->symtop = 1;
+	symset(p, "__builtin_va_list", SYM_TYPE);
 }
 
 static void parser_free(Parser *p)
@@ -692,6 +693,11 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL));
 				while (P == ',') {
 					N;
+					if (P == TOK_DOT3) {
+						N;
+						n->va_arg = true;
+						break;
+					}
 					d1 = parse_type1(p);
 					if (d1.type == NULL) {
 						tree_free(&n->h);

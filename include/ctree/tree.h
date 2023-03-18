@@ -108,6 +108,7 @@ typedef struct TypeFUN_ {
 	Type h;
 	Type *rt;
 	vec_type_t at;
+	bool va_arg;
 } TypeFUN;
 
 TypeFUN *typeFUN(Type *rt);

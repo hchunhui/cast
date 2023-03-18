@@ -32,6 +32,7 @@ enum {
 	TOK_ASSIGNDIV,  // /=
 	TOK_ASSIGNMOD,  // %=
 	TOK_EQ,         // ==
+	TOK_DOT3,       // ...
 	TOK_END = 256,
 	TOK_ERROR,
 	TOK_IDENT,

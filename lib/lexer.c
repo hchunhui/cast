@@ -68,6 +68,11 @@ char text_stream_next(TextStream *ts)
 	ts->i++;
 }
 
+char text_stream_prev(TextStream *ts)
+{
+	ts->i--;
+}
+
 struct Lexer_ {
 	TextStream *ts;
 	map_int_t kws;
@@ -82,6 +87,7 @@ struct Lexer_ {
 
 #define P text_stream_peek(l->ts)
 #define N text_stream_next(l->ts)
+#define U text_stream_prev(l->ts)
 static int lex_punct(Lexer *l)
 {
 	char c = P;
@@ -191,12 +197,24 @@ static int lex_punct(Lexer *l)
 			N; return TOK_EQ;
 		}
 		return c;
+	case '.':
+		// . ...
+		N; d = P;
+		if (d == '.') {
+			N; d = P;
+			if (d == '.') {
+				N; return TOK_DOT3;
+			} else {
+				U; return '.';
+			}
+		} else {
+			return '.';
+		}
 	case '~':
 	case '(': case ')':
 	case '[': case ']':
 	case '{': case '}':
 	case ',':
-	case '.':
 	case ';':
 	case ':':
 	case '#':

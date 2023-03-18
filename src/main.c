@@ -82,6 +82,8 @@ static void type_print_annot(Type *type, bool simple)
 			if (i) printf(", ");
 			type_print_annot(p, simple);
 		}
+		if (((TypeFUN *) type)->va_arg)
+			printf(", ...");
 		printf(") -> ");
 		type_print_annot(((TypeFUN *) type)->rt, simple);
 		break;
@@ -235,6 +237,8 @@ static void type_print_declarator2(Type *type)
 			type_print_declarator1(p);
 			type_print_declarator2(p);
 		}
+		if (((TypeFUN *) type)->va_arg)
+			printf(", ...");
 		printf(" )");
 		type_print_declarator2(((TypeFUN *) type)->rt);
 		return;
@@ -288,6 +292,8 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 				((StmtVARDECL *) p)->name);
 		}
 	}
+	if (type->va_arg)
+		printf(", ...");
 	printf(")");
 	type_print_declarator2(rt);
 }
