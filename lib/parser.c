@@ -391,7 +391,7 @@ static Expr *parse_or_expr_post(Parser *p, Expr *e, int prec)
 	while (e) {
 		switch (P) {
 		case TOK_OR:
-			N; e = applyBOP(EXPR_OP_OR, e, parse_equality_expr(p)); break;
+			N; e = applyBOP(EXPR_OP_OR, e, parse_conditional_expr(p)); break;
 		default:
 			return parse_conditional_expr_post(p, e, prec);
 		}
