@@ -947,8 +947,9 @@ static Declarator parse_type1(Parser *p)
 					d.type = is_unsigned ? typeUSHORT() : typeSHORT();
 				}
 			} else if (long_count == 0) {
-				if (tcount)
+				if (tcount || scount) {
 					d.type = is_unsigned ? typeUINT() : typeINT();
+				}
 			} else if (long_count == 1) {
 				d.type = is_unsigned ? typeULONG() : typeLONG();
 			} else if (long_count == 2) {
