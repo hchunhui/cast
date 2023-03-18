@@ -66,7 +66,7 @@ STMT(SKIP)
 
 
 STMT(FUNDECL, unsigned int, flags, const char *, name, TypeFUN *, type, StmtBLOCK *, args, StmtBLOCK *, body)
-STMT(VARDECL, unsigned int, flags, const char *, name, Type *,    type, Expr *,      init)
+STMT(VARDECL, unsigned int, flags, const char *, name, Type *,    type, Expr *,      init, int, bitfield)
 STMT(TYPEDEF, const char *, name, Type *,    type)
 STMT(STRUCT,  const char *, name, Type *,    type)
 STMT(UNION,   const char *, name, Type *,    type)

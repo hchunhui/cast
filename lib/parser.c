@@ -736,7 +736,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 					continue;
 				}
 				typeFUN_append(n, d1.type);
-				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL));
+				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
 				while (P == ',') {
 					N;
 					if (P == TOK_DOT3) {
@@ -749,7 +749,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						tree_free(&n->h);
 					}
 					typeFUN_append(n, d1.type);
-					stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL));
+					stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
 				}
 				F(match(p, ')'), tree_free(&n->h));
 				d->type = &n->h;
@@ -1081,6 +1081,25 @@ static Expr *parse_initializer(Parser *p)
 	return NULL;
 }
 
+Stmt *make_decl(Parser *p, Declarator d)
+{
+	Stmt *decl1;
+	if (d.type->type == TYPE_FUN) {
+		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL);
+	} else {
+		int bitfield = -1;
+		if (match(p, ':')) {
+			if (P == TOK_INT_CST) {
+				bitfield = PI; N;
+			} else {
+				return NULL;
+			}
+		}
+		decl1 = stmtVARDECL(d.flags, d.ident, d.type, parse_initializer(p), bitfield);
+	}
+	return decl1;
+}
+
 Stmt *parse_decl(Parser *p)
 {
 	Type *btype;
@@ -1110,11 +1129,7 @@ Stmt *parse_decl(Parser *p)
 	}
 
 	Stmt *decl1;
-	if (d.type->type == TYPE_FUN) {
-		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL);
-	} else {
-		decl1 = stmtVARDECL(d.flags, d.ident, d.type, parse_initializer(p));
-	}
+	F(decl1 = make_decl(p, d), tree_free(d.type), free(d.ident));
 
 	if (P == ';') {
 		N; return decl1;
@@ -1134,11 +1149,7 @@ Stmt *parse_decl(Parser *p)
 				return NULL;
 			}
 			symset(p, dd.ident, SYM_IDENT);
-			if (dd.type->type == TYPE_FUN) {
-				decl1 = stmtFUNDECL(dd.flags, dd.ident, (TypeFUN *) dd.type, dd.funargs, NULL);
-			} else {
-				decl1 = stmtVARDECL(dd.flags, dd.ident, dd.type, parse_initializer(p));
-			}
+			F(decl1 = make_decl(p, dd), tree_free((Stmt *) decls));
 			stmtDECLS_append(decls, decl1);
 		}
 		if (P == ';') {

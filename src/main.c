@@ -774,9 +774,13 @@ static void stmt_print(Stmt *h, int level)
 		else
 			printf("// vardecl: /* unnamed */, type: ");
 		type_print_annot(s->type, true);
+		if (s->bitfield != -1)
+			printf(", bitfield : %d", s->bitfield);
 		printf("\n");
 		print_level(level);
 		type_print_vardecl(s->flags, s->type, s->name);
+		if (s->bitfield != -1)
+			printf(" : %d", s->bitfield);
 		if (s->init) {
 			printf(" =");
 			expr_print(s->init);
