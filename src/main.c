@@ -835,7 +835,6 @@ void toplevel_print(StmtBLOCK *s)
 void toplevel_test(const char *file)
 {
 	TextStream *ts = text_stream_new(file);
-//	TextStream *ts = text_stream_from_string("int main() {}");
 	Lexer *l = lexer_new(ts);
 	Parser *p = parser_new(l);
 
@@ -851,28 +850,8 @@ void toplevel_test(const char *file)
 	text_stream_delete(ts);
 }
 
-void expr_test()
-{
-	TextStream *ts = text_stream_from_string("a==1?2:3");
-	Lexer *l = lexer_new(ts);
-	Parser *p = parser_new(l);
-
-	Expr *e = parse_expr(p);
-	if (e) {
-		expr_print(e);
-		printf("\n");
-	} else {
-		printf("FAIL\n");
-	}
-
-	parser_delete(p);
-	lexer_delete(l);
-	text_stream_delete(ts);
-}
-
 int main(int argc, char *argv[])
 {
 	toplevel_test(argv[1]);
-	expr_test();
 	return 0;
 }

@@ -563,7 +563,6 @@ static bool lex_float(Lexer *l)
 				}
 			}
 		}
-		fprintf(stderr, "try: %s\n", l->tok.data);
 		char *endp;
 		if (lex_one_ignore(l, lex_fF)) {
 			l->u.float_cst = strtof(l->tok.data, &endp);
