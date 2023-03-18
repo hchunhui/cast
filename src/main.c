@@ -407,7 +407,13 @@ static void expr_print(Expr *h)
 		case '\n': printf("\\n"); break;
 		case '\r': printf("\\r"); break;
 		case '\t': printf("\\t"); break;
-		default: putchar(e->v); break;
+		case '\0': printf("\\0"); break;
+		default:
+			if (e->v >= 0 && e->v < 32) {
+				printf("\\x%x", e->v); break;
+			} else {
+				putchar(e->v); break;
+			}
 		}
 		putchar('\'');
 		break;
@@ -425,7 +431,12 @@ static void expr_print(Expr *h)
 			case '\n': printf("\\n"); break;
 			case '\r': printf("\\r"); break;
 			case '\t': printf("\\t"); break;
-			default: putchar(e->v[i]); break;
+			default:
+				if (e->v[i] >= 0 && e->v[i] < 32) {
+					printf("\"\"\\x%x\"\"", e->v[i]); break;
+				} else {
+					putchar(e->v[i]); break;
+				}
 			}
 		}
 		putchar('"');
