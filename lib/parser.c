@@ -39,6 +39,8 @@ static void symset(Parser *p, const char *sym, int sv)
 static void parser_init(Parser *p, Lexer *l)
 {
 	p->lexer = l;
+	for (int i = 0; i < 100; i++)
+		map_init(&(p->symtabs[i]));
 	p->symtop = 1;
 	symset(p, "__builtin_va_list", SYM_TYPE);
 }
