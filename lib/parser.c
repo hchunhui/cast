@@ -1154,6 +1154,7 @@ Stmt *parse_stmt(Parser *p)
 		F(e = parse_expr(p), tree_free(s));
 		F(match(p, ')'), tree_free(s), tree_free(e));
 		F(match(p, ';'), tree_free(s), tree_free(e));
+		return stmtDO(e, s);
 	}
 	case TOK_FOR: {
 		N;
