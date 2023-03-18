@@ -1,9 +1,7 @@
 #include "parser.h"
 #include "lexer.h"
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <assert.h>
 #include "map.h"
 
@@ -39,8 +37,7 @@ static void symset(Parser *p, const char *sym, int sv)
 static void parser_init(Parser *p, Lexer *l)
 {
 	p->lexer = l;
-	for (int i = 0; i < 100; i++)
-		map_init(&(p->symtabs[i]));
+	map_init(&(p->symtabs[0]));
 	p->symtop = 1;
 	symset(p, "__builtin_va_list", SYM_TYPE);
 }
@@ -89,6 +86,13 @@ static int match(Parser *p, int token)
 	}
 }
 
+static char *get_and_next(Parser *p)
+{
+	char *id = strdup(PS);
+	N;
+	return id;
+}
+
 static Expr *parse_parentheses_post(Parser *p)
 {
 	Expr *e;
@@ -101,8 +105,7 @@ static Expr *parse_primary_expr(Parser *p)
 {
 	switch (P) {
 	case TOK_IDENT: {
-		const char *name = strdup(PS);
-		N; return exprIDENT(name);
+		return exprIDENT(get_and_next(p));
 	}
 	case TOK_INT_CST: {
 		int i = PI;
@@ -174,14 +177,11 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 		case '(': {
 			N;
 			ExprCALL *n = exprCALL(e);
-			if (P == ')') {
-				N;
-			} else {
+			if (!match(p, ')')) {
 				Expr *arg;
 				F(arg = parse_assignment_expr(p), tree_free(&n->h));
 				exprCALL_append(n, arg);
-				while (P == ',') {
-					N;
+				while (match(p, ',')) {
 					F(arg = parse_assignment_expr(p), tree_free(&n->h));
 					exprCALL_append(n, arg);
 				}
@@ -193,7 +193,7 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 		case '.': {
 			N;
 			if (P == TOK_IDENT) {
-				N; e = exprMEM(e, strdup(PS));
+				e = exprMEM(e, get_and_next(p));
 			} else {
 				return NULL;
 			}
@@ -202,7 +202,7 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 		case TOK_PMEM: { // -
 			N;
 			if (P == TOK_IDENT) {
-				N; e = exprPMEM(e, strdup(PS));
+				e = exprPMEM(e, get_and_next(p));
 			} else {
 				return NULL;
 			}
@@ -258,8 +258,7 @@ static Expr *parse_unary_expr(Parser *p)
 		N; return applyUOP(EXPR_OP_DEREF, parse_unary_expr(p));
 	case TOK_SIZEOF:
 		N;
-		if (P == '(') {
-			N;
+		if (match(p, '(')) {
 			Type *t = parse_type(p);
 			if (t) {
 				F(match(p, ')'), tree_free(t));
@@ -280,8 +279,7 @@ static Expr *parse_unary_expr(Parser *p)
 static Expr *parse_initializer(Parser *p);
 static Expr *parse_cast_expr(Parser *p)
 {
-	if (P =='(') {
-		N;
+	if (match(p, '(')) {
 		Type *t = parse_type(p);
 		if (t) {
 			F(match(p, ')'), tree_free(t));
@@ -386,8 +384,7 @@ static Expr *parse_conditional_expr_post(Parser *p, Expr *cond, int prec)
 		return cond;
 
 	if (cond) {
-		if (P == '?') {
-			N;
+		if (match(p, '?')) {
 			Expr *e1, *e2;
 			F(e1 = parse_expr(p), tree_free(cond));
 			F(match(p, ':'), tree_free(cond), tree_free(e1));
@@ -684,16 +681,16 @@ static unsigned int parse_type_qualifier(Parser *p)
 	bool progress = true;
 	while (progress) {
 		progress = false;
-		if (P == TOK_CONST) {
-			N; flags |= TFLAG_CONST;
+		if (match(p, TOK_CONST)) {
+			flags |= TFLAG_CONST;
 			progress = true;
 		}
-		if (P == TOK_VOLATILE) {
-			N; flags |= TFLAG_VOLATILE;
+		if (match(p, TOK_VOLATILE)) {
+			flags |= TFLAG_VOLATILE;
 			progress = true;
 		}
-		if (P == TOK_RESTRICT) {
-			N; flags |= TFLAG_RESTRICT;
+		if (match(p, TOK_RESTRICT)) {
+			flags |= TFLAG_RESTRICT;
 			progress = true;
 		}
 	}
@@ -703,8 +700,7 @@ static unsigned int parse_type_qualifier(Parser *p)
 static Declarator parse_type1(Parser *p, Type **pbtype);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
-	if (P == '*') {
-		N;
+	if (match(p, '*')) {
 		unsigned int flags = parse_type_qualifier(p);
 		F(parse_declarator0(p, d));
 		d->type = typePTR(d->type, flags);
@@ -712,26 +708,21 @@ static int parse_declarator0(Parser *p, Declarator *d)
 	}
 	if (P == TOK_IDENT) {
 		F(d->ident == NULL);
-		d->ident = strdup(PS);
-		N;
-	} else if (P == '(') {
-		N;
+		d->ident = get_and_next(p);
+	} else if (match(p, '(')) {
 		F(parse_declarator0(p, d));
 		F(match(p, ')'));
 	}
 	while (1) {
-		if (P == '[') {
-			N;
+		if (match(p, '[')) {
 			unsigned int flags = parse_type_qualifier(p);
 			Expr *e;
 			e = parse_assignment_expr(p);
 			F(match(p, ']'), tree_free(e));
 			d->type = typeARRAY(d->type, e, flags);
-		} else if (P == '(') {
-			N;
+		} else if (match(p, '(')) {
 			TypeFUN *n = typeFUN(d->type);
-			if (P == ')') {
-				N;
+			if (match(p, ')')) {
 				d->type = &n->h;
 			} else {
 				d->funargs = stmtBLOCK();
@@ -748,10 +739,8 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				}
 				typeFUN_append(n, d1.type);
 				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
-				while (P == ',') {
-					N;
-					if (P == TOK_DOT3) {
-						N;
+				while (match(p, ',')) {
+					if (match(p, TOK_DOT3)) {
 						n->va_arg = true;
 						break;
 					}
@@ -788,10 +777,8 @@ static struct EnumPair_ parse_enum_pair(Parser *p)
 		int sv = symlookup(p, PS);
 		if (sv == SYM_UNKNOWN) {
 			symset(p, PS, SYM_IDENT);
-			ret.id = strdup(PS);
-			N;
-			if (P == '=') {
-				N;
+			ret.id = get_and_next(p);
+			if (match(p, '=')) {
 				ret.val = parse_assignment_expr(p);
 				if (!ret.val) {
 					free((char *) ret.id);
@@ -847,16 +834,13 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 		case TOK_AUTO: // ignore
 		case TOK_REGISTER: // ignore
 			N; break;
-		// type-qualifier TODO
+		// type-qualifier
 		case TOK_CONST:
-			tflags |= TFLAG_CONST;
-			N; break;
-		case TOK_RESTRICT:
-			tflags |= TFLAG_RESTRICT;
 		case TOK_VOLATILE:
-			tflags |= TFLAG_VOLATILE;
-			N; break;
-		// function-specifier TODO
+		case TOK_RESTRICT:
+			tflags |= parse_type_qualifier(p);
+			break;
+		// function-specifier
 		case TOK_INLINE:
 			d.flags |= DFLAG_INLINE;
 			N; break;
@@ -896,8 +880,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			if (sv == SYM_TYPE) {
 				int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
 				if (d.type == NULL && tcount == 0) {
-					d.type = typeTYPEDEF(strdup(PS), tflags);
-					N;
+					d.type = typeTYPEDEF(get_and_next(p), tflags);
 					break;
 				}
 			}
@@ -913,11 +896,9 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			char *tag = NULL;
 			StmtBLOCK *decls = NULL;
 			if (P == TOK_IDENT) {
-				tag = strdup(PS);
-				N;
+				tag = get_and_next(p);
 			}
-			if (P == '{') {
-				N;
+			if (match(p, '{')) {
 				decls = parse_stmts(p);
 				F_(match(p, '}'), err, tree_free(&decls->h));
 			}
@@ -931,27 +912,23 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			char *tag = NULL;
 			StmtBLOCK *decls = NULL;
 			if (P == TOK_IDENT) {
-				tag = strdup(PS);
-				N;
+				tag = get_and_next(p);
 			}
 
 			EnumList *list = malloc(sizeof(EnumList));
 			vec_init(&(list->items));
-			if (P == '{') {
-				N;
+			if (match(p, '{')) {
 				struct EnumPair_ pair = parse_enum_pair(p);
 				if (pair.id) {
 					vec_push(&(list->items), pair);
-					while (P == ',') {
-						N;
+					while (match(p, ',')) {
 						pair = parse_enum_pair(p);
 						if (pair.id == NULL)
 							break;
 						vec_push(&(list->items), pair);
 					}
 				}
-				if (P == '}') {
-					N;
+				if (match(p, '}')) {
 					d.type = typeENUM(tag, list, tflags);
 					break;
 				}
@@ -1053,19 +1030,17 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 
 static Expr *parse_initializer(Parser *p)
 {
-	if (P == '{') {
-		N;
+	if (match(p, '{')) {
 		ExprINIT *init = exprINIT();
 		Expr *e;
-		if (P == '}') {
-			N; return (Expr *) init;
+		if (match(p, '}')) {
+			return (Expr *) init;
 		}
 
 		F(e = parse_initializer(p),
 		  tree_free((Expr *) init));
 		exprINIT_append(init, e);
-		while (P == ',') {
-			N;
+		while (match(p, ',')) {
 			e = parse_initializer(p);
 			if (!e) {
 				break;
@@ -1073,8 +1048,8 @@ static Expr *parse_initializer(Parser *p)
 			exprINIT_append(init, e);
 		}
 
-		if (P == '}') {
-			N; return (Expr *) init;
+		if (match(p, '}')) {
+			return (Expr *) init;
 		}
 
 		tree_free((Expr *) init);
@@ -1085,11 +1060,8 @@ static Expr *parse_initializer(Parser *p)
 
 static Expr *parse_initializer1(Parser *p)
 {
-	if (P == '=') {
-		N;
-		return parse_initializer(p);
-	}
-	return NULL;
+	F(match(p, '='));
+	return parse_initializer(p);
 }
 
 Stmt *make_decl(Parser *p, Declarator d)
@@ -1119,8 +1091,7 @@ Stmt *parse_decl(Parser *p)
 	F(d.type);
 
 	if (d.is_typedef) {
-		if (P == ';') {
-			N;
+		if (match(p, ';')) {
 			if (d.ident)
 				symset(p, d.ident, SYM_TYPE);
 			return stmtTYPEDEF(d.ident, d.type);
@@ -1142,13 +1113,12 @@ Stmt *parse_decl(Parser *p)
 	Stmt *decl1;
 	F(decl1 = make_decl(p, d), tree_free(d.type), free(d.ident));
 
-	if (P == ';') {
-		N; return decl1;
+	if (match(p, ';')) {
+		return decl1;
 	} else {
 		StmtDECLS *decls = stmtDECLS();
 		stmtDECLS_append(decls, decl1);
-		while (P == ',') {
-			N;
+		while (match(p, ',')) {
 			Declarator dd = d;
 			dd.type = type_copy(btype);
 			dd.ident = NULL;
@@ -1163,8 +1133,8 @@ Stmt *parse_decl(Parser *p)
 			F(decl1 = make_decl(p, dd), tree_free((Stmt *) decls));
 			stmtDECLS_append(decls, decl1);
 		}
-		if (P == ';') {
-			N; return (Stmt *) decls;
+		if (match(p, ';')) {
+			return (Stmt *) decls;
 		} else {
 			tree_free((Stmt *) decls);
 		}
@@ -1183,8 +1153,7 @@ Stmt *parse_stmt(Parser *p)
 		F(e = parse_expr(p));
 		F(match(p, ')'), tree_free(e));
 		F(s1 = parse_stmt(p), tree_free(e));
-		if (P == TOK_ELSE) {
-			N;
+		if (match(p, TOK_ELSE)) {
 			F(s2 = parse_stmt(p), tree_free(e), tree_free(s1));
 			return stmtIF(e, s1, s2);
 		}
@@ -1283,8 +1252,7 @@ Stmt *parse_stmt(Parser *p)
 	case TOK_GOTO: {
 		N;
 		F(P == TOK_IDENT);
-		char *id = strdup(PS);
-		N;
+		char *id = get_and_next(p);
 		F(match(p, ';'), free(id));
 		return stmtGOTO(id);
 	}
@@ -1298,8 +1266,7 @@ Stmt *parse_stmt(Parser *p)
 
 		Expr *e;
 		if (P == TOK_IDENT) {
-			char *id = strdup(PS);
-			N;
+			char *id = get_and_next(p);
 			if (match(p, ':')) {
 				// a label
 				Stmt *s;

@@ -587,7 +587,7 @@ static void expr_print(Expr *h)
 		type_print_vardecl(0, e->t, "");
 		if (e->e->type == EXPR_INIT) {
 			printf(")");
-			expr_print(e->e);			
+			expr_print(e->e);
 		} else {
 			printf(") (");
 			expr_print(e->e);

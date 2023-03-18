@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <assert.h>
 #include "vec.h"
 #include "map.h"
@@ -401,12 +400,13 @@ static char lex_##name(Lexer *l) \
 	} \
 }
 
-LEX(alpha, (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
-LEX(alpha_, (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
-LEX(alphadigit_, \
-    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || \
-    (c >= '0' && c <= '9') || c == '_')
-LEX(digit, (c >= '0' && c <= '9'))
+#define ALPHA ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+#define DIGIT ((c >= '0' && c <= '9'))
+#define HEX   (DIGIT || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+LEX(alpha, ALPHA)
+LEX(alpha_, ALPHA || c == '_')
+LEX(alphadigit_, ALPHA || DIGIT || c == '_')
+LEX(digit, DIGIT)
 
 LEX(space, c == ' ' || c == '\t' || \
     c == '\r' || c == '\v' || c == '\f')
@@ -414,15 +414,13 @@ LEX(sharp, c == '#')
 LEX(newline, c == '\n')
 LEX(not_newline, c != '\n')
 
-LEX(strchar, c != '"' && c != '\\')
 LEX(quote, c == '"')
 LEX(uU, c == 'u' || c == 'U')
 LEX(l, c == 'l')
 LEX(L, c == 'L')
 LEX(0, c == '0')
 LEX(xX, c == 'x' || c == 'X')
-LEX(hex, (c >= '0' && c <= '9') || \
-    (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+LEX(hex, HEX)
 LEX(dot, c == '.')
 LEX(eE, c == 'e' || c == 'E')
 LEX(sign, c == '+' || c == '-')
@@ -580,6 +578,7 @@ static bool lex_float(Lexer *l)
 				l->tok_type = TOK_DOUBLE_CST;
 			}
 		}
+		return true;
 	} else {
 		return false;
 	}
