@@ -585,9 +585,14 @@ static void expr_print(Expr *h)
 		ExprCAST *e = (ExprCAST *) h;
 		printf(" ( ");
 		type_print_vardecl(0, e->t, "");
-		printf(") (");
-		expr_print(e->e);
-		printf(") ");
+		if (e->e->type == EXPR_INIT) {
+			printf(")");
+			expr_print(e->e);			
+		} else {
+			printf(") (");
+			expr_print(e->e);
+			printf(") ");
+		}
 		break;
 	}
 	case EXPR_SIZEOF: {

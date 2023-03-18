@@ -277,6 +277,7 @@ static Expr *parse_unary_expr(Parser *p)
 	return NULL;
 }
 
+static Expr *parse_initializer(Parser *p);
 static Expr *parse_cast_expr(Parser *p)
 {
 	if (P =='(') {
@@ -284,14 +285,13 @@ static Expr *parse_cast_expr(Parser *p)
 		Type *t = parse_type(p);
 		if (t) {
 			F(match(p, ')'), tree_free(t));
+			Expr *e;
 			if (P == '{') {
-				// TODO: ( type-name ) { init list }
-				abort();
+				F(e = parse_initializer(p), tree_free(t));
 			} else {
-				Expr *e;
 				F(e = parse_cast_expr(p), tree_free(t));
-				return exprCAST(t, e);
 			}
+			return exprCAST(t, e);
 		}
 		Expr *e = parse_parentheses_post(p);
 		return parse_postfix_expr_post(p, e, 4);
@@ -1051,7 +1051,7 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 	return block;
 }
 
-static Expr *parse_initializer0(Parser *p)
+static Expr *parse_initializer(Parser *p)
 {
 	if (P == '{') {
 		N;
@@ -1061,12 +1061,12 @@ static Expr *parse_initializer0(Parser *p)
 			N; return (Expr *) init;
 		}
 
-		F(e = parse_initializer0(p),
+		F(e = parse_initializer(p),
 		  tree_free((Expr *) init));
 		exprINIT_append(init, e);
 		while (P == ',') {
 			N;
-			e = parse_initializer0(p);
+			e = parse_initializer(p);
 			if (!e) {
 				break;
 			}
@@ -1083,11 +1083,11 @@ static Expr *parse_initializer0(Parser *p)
 	return parse_assignment_expr(p);
 }
 
-static Expr *parse_initializer(Parser *p)
+static Expr *parse_initializer1(Parser *p)
 {
 	if (P == '=') {
 		N;
-		return parse_initializer0(p);
+		return parse_initializer(p);
 	}
 	return NULL;
 }
@@ -1106,7 +1106,7 @@ Stmt *make_decl(Parser *p, Declarator d)
 				return NULL;
 			}
 		}
-		decl1 = stmtVARDECL(d.flags, d.ident, d.type, parse_initializer(p), bitfield);
+		decl1 = stmtVARDECL(d.flags, d.ident, d.type, parse_initializer1(p), bitfield);
 	}
 	return decl1;
 }
