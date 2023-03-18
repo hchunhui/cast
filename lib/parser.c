@@ -64,6 +64,7 @@ void parser_delete(Parser *p)
 #define PS lexer_peek_string(p->lexer)
 #define PSL lexer_peek_string_len(p->lexer)
 #define PI lexer_peek_int(p->lexer)
+#define PUI lexer_peek_uint(p->lexer)
 #define PC lexer_peek_char(p->lexer)
 #define N lexer_next(p->lexer)
 #define F_(cond, errval, ...) do { if (!(cond)) { __VA_ARGS__; return errval; } } while (0)
@@ -97,6 +98,26 @@ static Expr *parse_primary_expr(Parser *p)
 	case TOK_INT_CST: {
 		int i = PI;
 		N; return exprINT_CST(i);
+	}
+	case TOK_UINT_CST: {
+		unsigned int i = PI;
+		N; return exprUINT_CST(i);
+	}
+	case TOK_LONG_CST: {
+		long i = PI;
+		N; return exprLONG_CST(i);
+	}
+	case TOK_ULONG_CST: {
+		unsigned long i = PI;
+		N; return exprULONG_CST(i);
+	}
+	case TOK_LLONG_CST: {
+		long long i = PI;
+		N; return exprLLONG_CST(i);
+	}
+	case TOK_ULLONG_CST: {
+		unsigned long long i = PI;
+		N; return exprULLONG_CST(i);
 	}
 	case TOK_CHAR_CST: {
 		char c = PC;

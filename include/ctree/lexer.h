@@ -37,6 +37,11 @@ enum {
 	TOK_ERROR,
 	TOK_IDENT,
 	TOK_INT_CST,
+	TOK_UINT_CST,
+	TOK_LONG_CST,
+	TOK_ULONG_CST,
+	TOK_LLONG_CST,
+	TOK_ULLONG_CST,
 	TOK_CHAR_CST,
 	TOK_STRING_CST,
 	TOK_BOOL_CST,
@@ -85,7 +90,8 @@ void lexer_next(Lexer *l);
 int lexer_peek(Lexer *l);
 const char *lexer_peek_string(Lexer *l);
 int lexer_peek_string_len(Lexer *l);
-int lexer_peek_int(Lexer *l);
+long long lexer_peek_int(Lexer *l);
+unsigned long long lexer_peek_uint(Lexer *l);
 char lexer_peek_char(Lexer *l);
 
 #endif /* LEXER_H */

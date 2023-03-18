@@ -370,6 +370,31 @@ static void expr_print(Expr *h)
 		printf(" %d ", e->v);
 		break;
 	}
+	case EXPR_UINT_CST: {
+		ExprUINT_CST *e = (ExprUINT_CST *) h;
+		printf(" %uu ", e->v);
+		break;
+	}
+	case EXPR_LONG_CST: {
+		ExprLONG_CST *e = (ExprLONG_CST *) h;
+		printf(" %ldl ", e->v);
+		break;
+	}
+	case EXPR_ULONG_CST: {
+		ExprULONG_CST *e = (ExprULONG_CST *) h;
+		printf(" %luul ", e->v);
+		break;
+	}
+	case EXPR_LLONG_CST: {
+		ExprLLONG_CST *e = (ExprLLONG_CST *) h;
+		printf(" %lldll ", e->v);
+		break;
+	}
+	case EXPR_ULLONG_CST: {
+		ExprULLONG_CST *e = (ExprULLONG_CST *) h;
+		printf(" %lluull ", e->v);
+		break;
+	}
 	case EXPR_CHAR_CST: {
 		ExprCHAR_CST *e = (ExprCHAR_CST *) h;
 		putchar('\'');

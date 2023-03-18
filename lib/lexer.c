@@ -80,7 +80,8 @@ struct Lexer_ {
 	int tok_type;
 	vec_char_t tok;
 	union {
-		int int_cst;
+		long long int_cst;
+		unsigned long long uint_cst;
 		char char_cst;
 	} u;
 };
@@ -326,13 +327,23 @@ static char lex_##name(Lexer *l) \
 	} \
 }
 
-LEX(alpha, isalpha(c))
-LEX(alpha_, isalpha(c) || c == '_')
-LEX(alphadigit_, isalpha(c) || isdigit(c) || c == '_')
-LEX(digit, isdigit(c))
-LEX(space, isspace(c))
+LEX(alpha, (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+LEX(alpha_, (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
+LEX(alphadigit_, \
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || \
+    (c >= '0' && c <= '9') || c == '_')
+LEX(digit, (c >= '0' && c <= '9'))
+LEX(space, c == ' ' || c == '\t' || c == '\n' || \
+    c == '\r' || c == '\v' || c == '\f')
 LEX(strchar, c != '"' && c != '\\')
 LEX(quote, c == '"')
+LEX(uU, c == 'u' || c == 'U')
+LEX(l, c == 'l')
+LEX(L, c == 'L')
+LEX(0, c == '0')
+LEX(xX, c == 'x' || c == 'X')
+LEX(hex, (c >= '0' && c <= '9') || \
+    (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
 
 typedef char (*lex_func_t)(Lexer *);
 
@@ -380,6 +391,42 @@ static bool lex_many_ignore(Lexer *l, lex_func_t lex)
 	}
 }
 
+static void handle_int_cst(Lexer *l, int base)
+{
+	char *endp;
+	if (lex_one_ignore(l, lex_uU)) {
+		l->u.uint_cst = strtoull(l->tok.data, &endp, base);
+		if (*endp != '\0') {
+			l->tok_type = TOK_ERROR;
+		} else {
+			if (lex_one_ignore(l, lex_l)) {
+				if (lex_one_ignore(l, lex_l)) {
+					l->tok_type = TOK_ULLONG_CST;
+				} else {
+					l->tok_type = TOK_ULONG_CST;
+				}
+			} else {
+				l->tok_type = TOK_UINT_CST;
+			}
+		}
+	} else {
+		l->u.int_cst = strtoll(l->tok.data, &endp, base);
+		if (*endp != '\0') {
+			l->tok_type = TOK_ERROR;
+		} else {
+			if (lex_one_ignore(l, lex_l)) {
+				if (lex_one_ignore(l, lex_l)) {
+					l->tok_type = TOK_LLONG_CST;
+				} else {
+					l->tok_type = TOK_LONG_CST;
+				}
+			} else {
+				l->tok_type = TOK_INT_CST;
+			}
+		}
+	}
+}
+
 void lexer_next(Lexer *l)
 {
 	vec_clear(&l->tok);
@@ -394,10 +441,30 @@ void lexer_next(Lexer *l)
 		} else {
 			l->tok_type = TOK_IDENT;
 		}
+	} else if (lex_one(l, lex_0)) {
+		if (lex_one(l, lex_xX)) {
+			if (lex_many(l, lex_hex)) {
+				vec_push(&l->tok, 0);
+				handle_int_cst(l, 16);
+			} else {
+				l->tok_type = TOK_ERROR;
+			}
+		} else {
+			if (lex_many(l, lex_digit)) {
+				vec_push(&l->tok, 0);
+				if (l->tok.data[0] == '0') {
+					handle_int_cst(l, 8);
+				} else {
+					handle_int_cst(l, 10);
+				}
+			} else {
+				vec_push(&l->tok, 0);
+				handle_int_cst(l, 10); // zero
+			}
+		}
 	} else if (lex_many(l, lex_digit)) {
 		vec_push(&l->tok, 0);
-		l->u.int_cst = atoi(l->tok.data);
-		l->tok_type = TOK_INT_CST;
+		handle_int_cst(l, 10);
 	} else if (text_stream_peek(l->ts) == 0) {
 		l->tok_type = TOK_END;
 	} else {
@@ -445,9 +512,14 @@ int lexer_peek_string_len(Lexer *l)
 	return l->tok.length;
 }
 
-int lexer_peek_int(Lexer *l)
+long long lexer_peek_int(Lexer *l)
 {
 	return l->u.int_cst;
+}
+
+unsigned long long lexer_peek_uint(Lexer *l)
+{
+	return l->u.uint_cst;
 }
 
 char lexer_peek_char(Lexer *l)
