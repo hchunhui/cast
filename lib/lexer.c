@@ -540,6 +540,27 @@ static void handle_int_cst(Lexer *l, int base)
 	}
 }
 
+static void handle_float_cst(Lexer *l)
+{
+	char *endp;
+	if (lex_one_ignore(l, lex_fF)) {
+		l->u.float_cst = strtof(l->tok.data, &endp);
+		if (*endp != '\0') {
+			l->tok_type = TOK_ERROR;
+		} else {
+			l->tok_type = TOK_FLOAT_CST;
+		}
+	} else {
+		lex_one_ignore(l, lex_lL);
+		l->u.float_cst = strtod(l->tok.data, &endp);
+		if (*endp != '\0') {
+			l->tok_type = TOK_ERROR;
+		} else {
+			l->tok_type = TOK_DOUBLE_CST;
+		}
+	}
+}
+
 static bool lex_float(Lexer *l)
 {
 	if (lex_one(l, lex_dot)) {
@@ -550,7 +571,7 @@ static bool lex_float(Lexer *l)
 					vec_push(&l->tok, 0);
 				} else {
 					l->tok_type = TOK_ERROR;
-					return false;
+					return true;
 				}
 			} else {
 				vec_push(&l->tok, 0);
@@ -567,32 +588,31 @@ static bool lex_float(Lexer *l)
 						vec_push(&l->tok, 0);
 					} else {
 						l->tok_type = TOK_ERROR;
-						return false;
+						return true;
 					}
 				} else {
 					vec_push(&l->tok, 0);
 				}
 			}
 		}
-		char *endp;
-		if (lex_one_ignore(l, lex_fF)) {
-			l->u.float_cst = strtof(l->tok.data, &endp);
-			if (*endp != '\0') {
-				l->tok_type = TOK_ERROR;
-			} else {
-				l->tok_type = TOK_FLOAT_CST;
-			}
-		} else {
-			lex_one_ignore(l, lex_lL);
-			l->u.float_cst = strtod(l->tok.data, &endp);
-			if (*endp != '\0') {
-				l->tok_type = TOK_ERROR;
-			} else {
-				l->tok_type = TOK_DOUBLE_CST;
-			}
-		}
+		handle_float_cst(l);
 		return true;
 	} else {
+		if (l->tok.length != 0) {
+			if (lex_one(l, lex_eE)) {
+				lex_one(l, lex_sign);
+				if (lex_many(l, lex_digit)) {
+					vec_push(&l->tok, 0);
+				} else {
+					l->tok_type = TOK_ERROR;
+					return true;
+				}
+			} else {
+				return false;
+			}
+			handle_float_cst(l);
+			return true;
+		}
 		return false;
 	}
 }
