@@ -770,7 +770,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 			if (match(p, ')')) {
 				d->type = &n->h;
 			} else {
-				d->funargs = stmtBLOCK();
+				StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
 				Declarator d1 = parse_type1(p, NULL);
 				if (d1.type == NULL) {
 					tree_free(&n->h);
@@ -783,7 +783,8 @@ static int parse_declarator0(Parser *p, Declarator *d)
 					continue;
 				}
 				typeFUN_append(n, d1.type);
-				stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
+				if (funargs)
+					stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
 				while (match(p, ',')) {
 					if (match(p, TOK_DOT3)) {
 						n->va_arg = true;
@@ -794,10 +795,13 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						tree_free(&n->h);
 					}
 					typeFUN_append(n, d1.type);
-					stmtBLOCK_append(d->funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
+					if (funargs)
+						stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
 				}
 				F(match(p, ')'), tree_free(&n->h));
 				d->type = &n->h;
+				if (funargs)
+					d->funargs = funargs;
 			}
 		} else {
 			break;
