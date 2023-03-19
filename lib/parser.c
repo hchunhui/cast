@@ -233,6 +233,7 @@ static Expr *applyUOP(ExprUnOp op, Expr *e)
 	return NULL;
 }
 
+static Expr *parse_cast_expr(Parser *p);
 static Expr *parse_unary_expr(Parser *p)
 {
 	Expr *e = parse_primary_expr(p);
@@ -245,17 +246,17 @@ static Expr *parse_unary_expr(Parser *p)
 	case TOK_DEC:
 		N; return applyUOP(EXPR_OP_PREDEC, parse_unary_expr(p));
 	case '!':
-		N; return applyUOP(EXPR_OP_NOT, parse_unary_expr(p));
+		N; return applyUOP(EXPR_OP_NOT, parse_cast_expr(p));
 	case '~':
-		N; return applyUOP(EXPR_OP_BNOT, parse_unary_expr(p));
+		N; return applyUOP(EXPR_OP_BNOT, parse_cast_expr(p));
 	case '+':
-		N; return applyUOP(EXPR_OP_POS, parse_unary_expr(p));
+		N; return applyUOP(EXPR_OP_POS, parse_cast_expr(p));
 	case '-':
-		N; return applyUOP(EXPR_OP_NEG, parse_unary_expr(p));
+		N; return applyUOP(EXPR_OP_NEG, parse_cast_expr(p));
 	case '&':
-		N; return applyUOP(EXPR_OP_ADDROF, parse_unary_expr(p));
+		N; return applyUOP(EXPR_OP_ADDROF, parse_cast_expr(p));
 	case '*':
-		N; return applyUOP(EXPR_OP_DEREF, parse_unary_expr(p));
+		N; return applyUOP(EXPR_OP_DEREF, parse_cast_expr(p));
 	case TOK_SIZEOF:
 		N;
 		if (match(p, '(')) {
@@ -405,7 +406,7 @@ static Expr *parse_or_expr_post(Parser *p, Expr *e, int prec)
 	while (e) {
 		switch (P) {
 		case TOK_OR:
-			N; e = applyBOP(EXPR_OP_OR, e, parse_conditional_expr(p)); break;
+			N; e = applyBOP(EXPR_OP_OR, e, parse_and_expr(p)); break;
 		default:
 			return parse_conditional_expr_post(p, e, prec);
 		}

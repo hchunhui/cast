@@ -198,6 +198,7 @@ static int lex_punct(Lexer *l)
 		if (d == '=') {
 			N; return TOK_ASSIGNBXOR;
 		}
+		return c;
 	case '<':
 		// < <= << <<=
 		N; d = P;
@@ -505,6 +506,12 @@ static void handle_int_cst(Lexer *l, int base)
 				} else {
 					l->tok_type = TOK_ULONG_CST;
 				}
+			} else if (lex_one_ignore(l, lex_L)) {
+				if (lex_one_ignore(l, lex_L)) {
+					l->tok_type = TOK_ULLONG_CST;
+				} else {
+					l->tok_type = TOK_ULONG_CST;
+				}
 			} else {
 				l->tok_type = TOK_UINT_CST;
 			}
@@ -516,6 +523,12 @@ static void handle_int_cst(Lexer *l, int base)
 		} else {
 			if (lex_one_ignore(l, lex_l)) {
 				if (lex_one_ignore(l, lex_l)) {
+					l->tok_type = TOK_LLONG_CST;
+				} else {
+					l->tok_type = TOK_LONG_CST;
+				}
+			} else if (lex_one_ignore(l, lex_L)) {
+				if (lex_one_ignore(l, lex_L)) {
 					l->tok_type = TOK_LLONG_CST;
 				} else {
 					l->tok_type = TOK_LONG_CST;
