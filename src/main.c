@@ -236,6 +236,7 @@ static void type_print_declarator1(Type *type)
 	case TYPE_PTR:
 		type_print_declarator1(((TypePTR *) type)->t);
 		printf("( * ");
+		type_flags_print(type);
 		return;
 	case TYPE_ARRAY:
 		type_print_declarator1(((TypeARRAY *) type)->t);
