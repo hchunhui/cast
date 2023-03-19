@@ -925,7 +925,9 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			if (sv == SYM_TYPE) {
 				int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
 				if (d.type == NULL && tcount == 0) {
-					d.type = typeTYPEDEF(get_and_next(p), tflags);
+					char *name = get_and_next(p);
+					tflags |= parse_type_qualifier(p);
+					d.type = typeTYPEDEF(name, tflags);
 					break;
 				}
 			}
@@ -943,6 +945,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
+			tflags |= parse_type_qualifier(p);
 			if (match(p, '{')) {
 				decls = parse_stmts(p);
 				F_(match(p, '}'), err, tree_free(&decls->h));
