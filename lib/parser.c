@@ -101,11 +101,55 @@ static Expr *parse_parentheses_post(Parser *p)
 	return exprEXPR(e);
 }
 
+static Expr *parse_assignment_expr(Parser *p);
+Type *parse_type(Parser *p);
+static Expr *parse_ident_or_builtin(Parser *p, char *id)
+{
+	if (strcmp(id, "__builtin_va_start") == 0) {
+		Expr *ap;
+		char *last;
+		F(match(p, '('), free(id));
+		F(ap = parse_assignment_expr(p), free(id));
+		F(match(p, ','), free(id));
+		F(P == TOK_IDENT, tree_free(ap), free(id));
+		last = get_and_next(p);
+		F(match(p, ')'), free(p), tree_free(ap), free(id));
+		return exprVASTART(ap, last);
+	} else if (strcmp(id, "__builtin_va_arg") == 0) {
+		Expr *ap;
+		Type *type;
+		F(match(p, '('), free(id));
+		F(ap = parse_assignment_expr(p), free(id));
+		F(match(p, ','), free(id));
+		F(type = parse_type(p), tree_free(ap), free(id));
+		F(match(p, ')'), tree_free(type), tree_free(ap), free(id));
+		return exprVAARG(ap, type);
+	} else if (strcmp(id, "__builtin_va_end") == 0) {
+		Expr *ap;
+		F(match(p, '('), free(id));
+		F(ap = parse_assignment_expr(p), free(id));
+		F(match(p, ')'), tree_free(ap), free(id));
+		return exprVAEND(ap);
+	} else if (strcmp(id, "__builtin_offsetof") == 0) {
+		Type *type;
+		char *mem;
+		F(match(p, '('), free(id));
+		F(type = parse_type(p), free(id));
+		F(match(p, ','), free(id));
+		F(P == TOK_IDENT, tree_free(type), free(id));
+		mem = get_and_next(p);
+		F(match(p, ')'), free(mem), tree_free(type), free(id));
+		return exprOFFSETOF(type, mem);
+	}
+	return exprIDENT(id);
+}
+
 static Expr *parse_primary_expr(Parser *p)
 {
 	switch (P) {
 	case TOK_IDENT: {
-		return exprIDENT(get_and_next(p));
+		char *id = get_and_next(p);
+		return parse_ident_or_builtin(p, id);
 	}
 	case TOK_INT_CST: {
 		int i = PI;
@@ -1275,7 +1319,8 @@ Stmt *parse_stmt(Parser *p)
 				return stmtLABEL(id, s);
 			} else {
 				// maybe an expression
-				e = parse_postfix_expr_post(p, exprIDENT(id), 17);
+				Expr *e0 = parse_ident_or_builtin(p, id);
+				e = parse_postfix_expr_post(p, e0, 17);
 			}
 		} else {
 			e = parse_expr(p);

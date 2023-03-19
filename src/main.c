@@ -578,7 +578,9 @@ static void expr_print(Expr *h)
 	}
 	case EXPR_EXPR: {
 		ExprUOP *e = (ExprUOP *) h;
+		printf("(");
 		expr_print(e->e);
+		printf(")");
 		break;
 	}
 	case EXPR_CAST: {
@@ -619,6 +621,40 @@ static void expr_print(Expr *h)
 			expr_print(p);
 		}
 		printf("} ");
+		break;
+	}
+	case EXPR_VASTART: {
+		ExprVASTART *e = (ExprVASTART *) h;
+		printf(" __builtin_va_start ( ");
+		expr_print(e->ap);
+		printf(", ");
+		printf("%s ", e->last);
+		printf(") ");
+		break;
+	}
+	case EXPR_VAARG: {
+		ExprVAARG *e = (ExprVAARG *) h;
+		printf(" __builtin_va_arg ( ");
+		expr_print(e->ap);
+		printf(", ");
+		type_print_vardecl(0, e->type, "");
+		printf(") ");
+		break;
+	}
+	case EXPR_VAEND: {
+		ExprVAEND *e = (ExprVAEND *) h;
+		printf(" __builtin_va_end ( ");
+		expr_print(e->ap);
+		printf(") ");
+		break;
+	}
+	case EXPR_OFFSETOF: {
+		ExprOFFSETOF *e = (ExprOFFSETOF *) h;
+		printf(" __builtin_offsetof ( ");
+		type_print_vardecl(0, e->type, "");
+		printf(", ");
+		printf("%s ", e->mem);
+		printf(") ");
 		break;
 	}
 	}

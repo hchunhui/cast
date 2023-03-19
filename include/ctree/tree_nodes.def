@@ -48,6 +48,12 @@ EXPR(SIZEOF,     Expr *, e)
 EXPR(SIZEOFT,    Type *, t)
 //EXPR(INIT)
 
+// builtins
+EXPR(VASTART,   Expr *, ap, const char *, last)
+EXPR(VAARG,     Expr *, ap, Type *, type)
+EXPR(VAEND,     Expr *, ap)
+EXPR(OFFSETOF,  Type *, type, const char *, mem)
+
 STMT(EXPR,  Expr *, expr)
 STMT(IF,    Expr *, cond, Stmt *, body1, Stmt *, body2)
 STMT(WHILE, Expr *, cond, Stmt *, body)
