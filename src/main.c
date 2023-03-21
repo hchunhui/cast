@@ -52,7 +52,60 @@ static void type_flags_print(Type *t)
 		printf("volatile ");
 }
 
+static void lp()
+{
+	printf("(");
+}
+
+static void rp()
+{
+	printf(")");
+}
+
+static bool expr_isprim(Expr *h)
+{
+	switch (h->type) {
+	case EXPR_INT_CST:
+	case EXPR_UINT_CST:
+	case EXPR_LONG_CST:
+	case EXPR_ULONG_CST:
+	case EXPR_LLONG_CST:
+	case EXPR_ULLONG_CST:
+	case EXPR_CHAR_CST:
+	case EXPR_STRING_CST:
+	case EXPR_BOOL_CST:
+	case EXPR_FLOAT_CST:
+	case EXPR_DOUBLE_CST:
+	case EXPR_IDENT:
+		return true;
+	default: return false;
+	}
+}
+
 static void expr_print(Expr *h);
+static void expr_print1(Expr *h)
+{
+	if (h->type == EXPR_EXPR)
+		return expr_print1(((ExprEXPR *) h)->e);
+	if (expr_isprim(h) || h->type == EXPR_INIT) {
+		expr_print(h);
+	} else {
+		lp(); expr_print(h); rp();
+	}
+}
+
+static void expr_print2(Expr *h)
+{
+	if (h->type == EXPR_EXPR)
+		return expr_print2(((ExprEXPR *) h)->e);
+	if (h->type == EXPR_BOP &&
+	    ((ExprBOP *) h)->op == EXPR_OP_COMMA) {
+		lp(); expr_print(h); rp();
+	} else {
+		expr_print(h);
+	}
+}
+
 static void stmt_print(Stmt *h, int level);
 static void type_print_annot(Type *type, bool simple)
 {
@@ -113,7 +166,7 @@ static void type_print_annot(Type *type, bool simple)
 		type_print_annot(((TypeARRAY *) type)->t, simple);
 		printf(", ");
 		if (((TypeARRAY *) type)->n)
-			expr_print(((TypeARRAY *) type)->n);
+			expr_print2(((TypeARRAY *) type)->n);
 		printf(")");
 		break;
 	case TYPE_FUN:
@@ -161,7 +214,7 @@ static void type_print_annot(Type *type, bool simple)
 					printf("%s", p->id);
 					if (p->val) {
 						printf(" = ");
-						expr_print(p->val);
+						expr_print1(p->val);
 						printf(",\n");
 					} else {
 						printf(",\n");
@@ -293,7 +346,7 @@ static void type_print_declarator2(Type *type)
 		printf("[");
 		type_flags_print(type);
 		if (((TypeARRAY *) type)->n)
-			expr_print(((TypeARRAY *) type)->n);
+			expr_print1(((TypeARRAY *) type)->n);
 		printf("])");
 		type_print_declarator2(((TypeARRAY *) type)->t);
 		return;
@@ -513,79 +566,67 @@ static void expr_print(Expr *h)
 	}
 	case EXPR_MEM: {
 		ExprMEM *e = (ExprMEM *) h;
-		printf("(");
-		expr_print(e->a);
-		printf(") . %s", e->id);
+		expr_print1(e->a);
+		printf(" . %s", e->id);
 		break;
 	}
 	case EXPR_PMEM: {
 		ExprMEM *e = (ExprMEM *) h;
-		printf("(");
-		expr_print(e->a);
-		printf(") -> %s", e->id);
+		expr_print1(e->a);
+		printf(" -> %s", e->id);
 		break;
 	}
 	case EXPR_CALL: {
 		ExprCALL *e = (ExprCALL *) h;
-		printf("((");
-		expr_print(e->func);
-		printf(")(");
+		expr_print1(e->func);
+		printf("(");
 		Expr *p;
 		int i;
 		vec_foreach(&e->args, p, i) {
 			if (i) printf(", ");
-			printf("(");
-			expr_print(p);
-			printf(")");
+			expr_print2(p);
 		}
-		printf("))");
+		printf(")");
 		break;
 	}
 	case EXPR_BOP: {
 		ExprBOP *e = (ExprBOP *) h;
 		if (e->op == EXPR_OP_IDX) {
-			printf("((");
-			expr_print(e->a);
-			printf(")[");
-			expr_print(e->b);
-			printf("])");
+			expr_print1(e->a);
+			printf("["); expr_print(e->b); printf("]");
 		} else {
-			printf("((");
-			expr_print(e->a);
-			printf(") %s (", bopname(e->op));
-			expr_print(e->b);
-			printf("))");
+			expr_print1(e->a);
+			printf(" %s ", bopname(e->op));
+			expr_print1(e->b);
 		}
 		break;
 	}
 	case EXPR_UOP: {
 		ExprUOP *e = (ExprUOP *) h;
 		switch (e->op) {
-		case EXPR_OP_NEG: printf("(- ("); expr_print(e->e); printf("))"); break;
-		case EXPR_OP_POS: printf("(+ ("); expr_print(e->e); printf("))"); break;
-		case EXPR_OP_NOT: printf("(! ("); expr_print(e->e); printf("))"); break;
-		case EXPR_OP_BNOT: printf("(~ ("); expr_print(e->e); printf("))"); break;
+		case EXPR_OP_NEG: printf("- "); expr_print1(e->e); break;
+		case EXPR_OP_POS: printf("+ "); expr_print1(e->e); break;
+		case EXPR_OP_NOT: printf("! "); expr_print1(e->e); break;
+		case EXPR_OP_BNOT: printf("~ "); expr_print1(e->e); break;
 
-		case EXPR_OP_ADDROF: printf("(& ("); expr_print(e->e); printf("))"); break;
-		case EXPR_OP_DEREF: printf("(* ("); expr_print(e->e); printf("))"); break;
+		case EXPR_OP_ADDROF: printf("& "); expr_print1(e->e); break;
+		case EXPR_OP_DEREF: printf("* "); expr_print1(e->e); break;
 
-		case EXPR_OP_PREINC: printf("(++ ("); expr_print(e->e); printf("))"); break;
-		case EXPR_OP_POSTINC: printf("(("); expr_print(e->e); printf(") ++)"); break;
-		case EXPR_OP_PREDEC: printf("(-- ("); expr_print(e->e); printf("))"); break;
-		case EXPR_OP_POSTDEC: printf("(("); expr_print(e->e); printf(") --)"); break;
+		case EXPR_OP_PREINC: printf("++ "); expr_print1(e->e); break;
+		case EXPR_OP_POSTINC: expr_print1(e->e); printf(" ++"); break;
+		case EXPR_OP_PREDEC: printf("-- "); expr_print1(e->e); break;
+		case EXPR_OP_POSTDEC: expr_print1(e->e); printf(" --"); break;
 		default: abort();
 		}
 		break;
 	}
 	case EXPR_COND: {
 		ExprCOND *e = (ExprCOND *) h;
-		printf("((");
-		expr_print(e->c);
-		printf(") ? (");
-		expr_print(e->a);
-		printf(") : (");
-		expr_print(e->b);
-		printf("))");
+		expr_print1(e->c);
+		printf(" ? ");
+		expr_print1(e->a);
+		printf(" : ");
+		expr_print1(e->b);
 		break;
 	}
 	case EXPR_EXPR: {
@@ -595,23 +636,21 @@ static void expr_print(Expr *h)
 	}
 	case EXPR_CAST: {
 		ExprCAST *e = (ExprCAST *) h;
-		printf("((");
+		printf("(");
 		type_print_vardecl(0, e->t, "");
 		if (e->e->type == EXPR_INIT) {
 			printf(") ");
 			expr_print(e->e);
-			printf(")");
 		} else {
-			printf(") (");
-			expr_print(e->e);
-			printf("))");
+			printf(") ");
+			expr_print1(e->e);
 		}
 		break;
 	}
 	case EXPR_SIZEOF: {
 		ExprSIZEOF *e = (ExprSIZEOF *) h;
 		printf("sizeof ");
-		expr_print(e->e);
+		expr_print1(e->e);
 		break;
 	}
 	case EXPR_SIZEOFT: {
@@ -628,43 +667,43 @@ static void expr_print(Expr *h)
 		int i;
 		vec_foreach(&e->items, p, i) {
 			if (i) printf(", ");
-			expr_print(p);
+			expr_print2(p);
 		}
 		printf("}");
 		break;
 	}
 	case EXPR_VASTART: {
 		ExprVASTART *e = (ExprVASTART *) h;
-		printf("(__builtin_va_start(");
-		expr_print(e->ap);
+		printf("__builtin_va_start(");
+		expr_print2(e->ap);
 		printf(", ");
 		printf("%s ", e->last);
-		printf("))");
+		printf(")");
 		break;
 	}
 	case EXPR_VAARG: {
 		ExprVAARG *e = (ExprVAARG *) h;
-		printf("(__builtin_va_arg(");
-		expr_print(e->ap);
+		printf("__builtin_va_arg(");
+		expr_print2(e->ap);
 		printf(", ");
 		type_print_vardecl(0, e->type, "");
-		printf("))");
+		printf(")");
 		break;
 	}
 	case EXPR_VAEND: {
 		ExprVAEND *e = (ExprVAEND *) h;
-		printf("(__builtin_va_end(");
-		expr_print(e->ap);
-		printf("))");
+		printf("__builtin_va_end(");
+		expr_print1(e->ap);
+		printf(")");
 		break;
 	}
 	case EXPR_OFFSETOF: {
 		ExprOFFSETOF *e = (ExprOFFSETOF *) h;
-		printf("(__builtin_offsetof( ");
+		printf("__builtin_offsetof( ");
 		type_print_vardecl(0, e->type, "");
 		printf(", ");
 		printf("%s ", e->mem);
-		printf("))");
+		printf(")");
 		break;
 	}
 	}
@@ -765,7 +804,7 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_CASE: {
 		StmtCASE *s = (StmtCASE *) h;
 		printf("case ");
-		expr_print(s->expr);
+		expr_print1(s->expr);
 		printf(":\n");
 		int nlevel = level;
 		if (s->stmt->type != STMT_CASE)
@@ -793,9 +832,9 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_RETURN: {
 		StmtRETURN *s = (StmtRETURN *) h;
 		if (s->expr) {
-			printf("return (");
-			expr_print(s->expr);
-			printf(");\n");
+			printf("return ");
+			expr_print1(s->expr);
+			printf(";\n");
 		} else {
 			printf("return;\n");
 		}
@@ -848,7 +887,7 @@ static void stmt_print(Stmt *h, int level)
 			printf(" : %d", s->bitfield);
 		if (s->init) {
 			printf(" = ");
-			expr_print(s->init);
+			expr_print2(s->init);
 		}
 		printf(";\n");
 		break;
