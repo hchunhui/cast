@@ -715,6 +715,13 @@ static void print_level(int level)
 		printf("    ");
 }
 
+static void stmt_printb(Stmt *h, int level)
+{
+	if (h->type == STMT_BLOCK)
+		level--;
+	stmt_print(h, level);
+}
+
 static void stmt_print(Stmt *h, int level)
 {
 	if (h->type != STMT_DECLS)
@@ -731,11 +738,11 @@ static void stmt_print(Stmt *h, int level)
 		printf("if (");
 		expr_print(s->cond);
 		printf(")\n");
-		stmt_print(s->body1, level + 1);
+		stmt_printb(s->body1, level + 1);
 		if (s->body2) {
 			print_level(level);
 			printf("else\n");
-			stmt_print(s->body2, level + 1);
+			stmt_printb(s->body2, level + 1);
 		}
 		printf("\n");
 		break;
@@ -745,14 +752,14 @@ static void stmt_print(Stmt *h, int level)
 		printf("while (");
 		expr_print(s->cond);
 		printf(")\n");
-		stmt_print(s->body, level + 1);
+		stmt_printb(s->body, level + 1);
 		printf("\n");
 		break;
 	}
 	case STMT_DO: {
 		StmtDO *s = (StmtDO *) h;
 		printf("do\n");
-		stmt_print(s->body, level + 1);
+		stmt_printb(s->body, level + 1);
 		print_level(level);
 		printf("while (");
 		expr_print(s->cond);
@@ -768,7 +775,7 @@ static void stmt_print(Stmt *h, int level)
 		printf(";");
 		if (s->step) expr_print(s->step);
 		printf(")\n");
-		stmt_print(s->body, level + 1);
+		stmt_printb(s->body, level + 1);
 		printf("\n");
 		break;
 	}
@@ -780,7 +787,7 @@ static void stmt_print(Stmt *h, int level)
 		printf(";");
 		if (s->step) expr_print(s->step);
 		printf(")\n");
-		stmt_print(s->body, level + 1);
+		stmt_printb(s->body, level + 1);
 		printf("\n");
 		break;
 	}
@@ -797,7 +804,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("switch (");
 		expr_print(s->expr);
 		printf(")\n");
-		stmt_print((Stmt *) (s->block), level + 1);
+		stmt_printb((Stmt *) (s->block), level + 1);
 		printf("\n");
 		break;
 	}
