@@ -492,51 +492,75 @@ static void skip_spaces(Lexer *l)
 	}
 }
 
+#define CTREE_INT_MAX              2147483647ull
+#define CTREE_UINT_MAX             4294967295ull
+#define CTREE_LONG_MAX    9223372036854775807ull
+#define CTREE_ULONG_MAX  18446744073709551615ull
+#define CTREE_LLONG_MAX   9223372036854775807ull
+#define CTREE_ULLONG_MAX 18446744073709551615ull
 static void handle_int_cst(Lexer *l, int base)
 {
-	char *endp;
+	unsigned long long v = strtoull(l->tok.data, NULL, base);
+	bool is_unsigned = false;
+	bool is_long = false;
+	bool is_longlong = false;
+
 	if (lex_one_ignore(l, lex_uU)) {
-		l->u.uint_cst = strtoull(l->tok.data, &endp, base);
-		if (*endp != '\0') {
-			l->tok_type = TOK_ERROR;
+		is_unsigned = true;
+	}
+	if (lex_one_ignore(l, lex_l)) {
+		if (lex_one_ignore(l, lex_l)) {
+			is_longlong = true;
 		} else {
-			if (lex_one_ignore(l, lex_l)) {
-				if (lex_one_ignore(l, lex_l)) {
-					l->tok_type = TOK_ULLONG_CST;
-				} else {
-					l->tok_type = TOK_ULONG_CST;
-				}
-			} else if (lex_one_ignore(l, lex_L)) {
-				if (lex_one_ignore(l, lex_L)) {
-					l->tok_type = TOK_ULLONG_CST;
-				} else {
-					l->tok_type = TOK_ULONG_CST;
-				}
-			} else {
+			is_long = true;
+		}
+	} else if (lex_one_ignore(l, lex_L)) {
+		if (lex_one_ignore(l, lex_L)) {
+			is_longlong = true;
+		} else {
+			is_long = true;
+		}
+	}
+	if (!is_unsigned) {
+		if (lex_one_ignore(l, lex_uU)) {
+			is_unsigned = true;
+		}
+	}
+	if (base == 10 || is_unsigned) {
+		if (is_unsigned) {
+			if (!is_long && !is_longlong && v <= CTREE_UINT_MAX)
 				l->tok_type = TOK_UINT_CST;
-			}
+			else if (is_long && v <= CTREE_ULONG_MAX)
+				l->tok_type = TOK_ULONG_CST;
+			else
+				l->tok_type = TOK_ULLONG_CST;
+		} else {
+			if (!is_long && !is_longlong && v <= CTREE_INT_MAX)
+				l->tok_type = TOK_INT_CST;
+			else if (is_long && v <= CTREE_LONG_MAX)
+				l->tok_type = TOK_LONG_CST;
+			else
+				l->tok_type = TOK_LLONG_CST;
 		}
 	} else {
-		l->u.int_cst = strtoll(l->tok.data, &endp, base);
-		if (*endp != '\0') {
-			l->tok_type = TOK_ERROR;
-		} else {
-			if (lex_one_ignore(l, lex_l)) {
-				if (lex_one_ignore(l, lex_l)) {
-					l->tok_type = TOK_LLONG_CST;
-				} else {
-					l->tok_type = TOK_LONG_CST;
-				}
-			} else if (lex_one_ignore(l, lex_L)) {
-				if (lex_one_ignore(l, lex_L)) {
-					l->tok_type = TOK_LLONG_CST;
-				} else {
-					l->tok_type = TOK_LONG_CST;
-				}
-			} else {
-				l->tok_type = TOK_INT_CST;
-			}
-		}
+		if (!is_long && !is_longlong && v <= CTREE_INT_MAX)
+			l->tok_type = TOK_INT_CST;
+		if (!is_long && !is_longlong && v <= CTREE_UINT_MAX)
+			l->tok_type = TOK_UINT_CST;
+		else if (is_long && v <= CTREE_LONG_MAX)
+			l->tok_type = TOK_LONG_CST;
+		else if (is_long && v <= CTREE_ULONG_MAX)
+			l->tok_type = TOK_ULONG_CST;
+		else if (v <= CTREE_LLONG_MAX)
+			l->tok_type = TOK_LLONG_CST;
+		else
+			l->tok_type = TOK_ULLONG_CST;
+	}
+	if (l->tok_type == TOK_INT_CST || l->tok_type == TOK_LONG_CST ||
+	    l->tok_type == TOK_LLONG_CST) {
+		l->u.int_cst = v;
+	} else {
+		l->u.uint_cst = v;
 	}
 }
 
@@ -643,11 +667,7 @@ void lexer_next(Lexer *l)
 			if (lex_many(l, lex_digit)) {
 				if (!lex_float(l)) {
 					vec_push(&l->tok, 0);
-					if (l->tok.data[0] == '0') {
-						handle_int_cst(l, 8);
-					} else {
-						handle_int_cst(l, 10);
-					}
+					handle_int_cst(l, 8);
 				}
 			} else {
 				if (!lex_float(l)) {
