@@ -776,9 +776,9 @@ static void stmt_print(Stmt *h, int level)
 		StmtFOR *s = (StmtFOR *) h;
 		printf("for (");
 		if (s->init) expr_print(s->init);
-		printf(";");
+		printf("; ");
 		if (s->cond) expr_print(s->cond);
-		printf(";");
+		printf("; ");
 		if (s->step) expr_print(s->step);
 		printf(")\n");
 		stmt_printb(s->body, level + 1);
@@ -790,7 +790,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("for (");
 		stmt_print((Stmt *) s->init, 0);
 		if (s->cond) expr_print(s->cond);
-		printf(";");
+		printf("; ");
 		if (s->step) expr_print(s->step);
 		printf(")\n");
 		stmt_printb(s->body, level + 1);
