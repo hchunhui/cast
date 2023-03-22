@@ -129,13 +129,28 @@ typedef struct ExprCALL_ {
 ExprCALL *exprCALL(Expr *func);
 void exprCALL_append(ExprCALL *call, Expr *arg);
 
+typedef struct Designator_ {
+	enum {
+		DES_FIELD,
+		DES_INDEX,
+	} type;
+	Expr *index;
+	const char *field;
+	struct Designator_ *next;
+} Designator;
+typedef struct ExprINITItem_ {
+	Designator *designator;
+	Expr *value;
+} ExprINITItem;
+typedef vec_t(ExprINITItem) vec_inititem_t;
+
 typedef struct ExprINIT_ {
 	Expr h;
-	vec_expr_t items;
+	vec_inititem_t items;
 } ExprINIT;
 
 ExprINIT *exprINIT();
-void exprINIT_append(ExprINIT *init, Expr *e);
+void exprINIT_append(ExprINIT *init, Designator *d, Expr *e);
 
 typedef vec_t(Stmt*) vec_stmt_t;
 

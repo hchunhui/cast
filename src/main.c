@@ -663,11 +663,28 @@ static void expr_print(Expr *h)
 	case EXPR_INIT: {
 		ExprINIT *e = (ExprINIT *) h;
 		printf("{");
-		Expr *p;
+		ExprINITItem p;
 		int i;
 		vec_foreach(&e->items, p, i) {
 			if (i) printf(", ");
-			expr_print2(p);
+			if (p.designator) {
+				Designator *d = p.designator;
+				while (d) {
+					switch(d->type) {
+					case DES_INDEX:
+						printf("[");
+						expr_print(d->index);
+						printf("]");
+						break;
+					case DES_FIELD:
+						printf(".%s", d->field);
+						break;
+					}
+					d = d->next;
+				}
+				printf(" = ");
+			}
+			expr_print2(p.value);
 		}
 		printf("}");
 		break;

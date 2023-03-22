@@ -1081,24 +1081,61 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 	return block;
 }
 
+static bool match_initialzer_item(Parser *p, ExprINIT *init)
+{
+	Designator *d1 = NULL;
+	while (true) {
+		Designator *n;
+		if (match(p, '[')) {
+			n = malloc(sizeof(Designator));
+			n->type = DES_INDEX;
+			// free...
+			F(n->index = parse_expr(p));
+			F(match(p, ']'));
+		} else if (match(p, '.')) {
+			n = malloc(sizeof(Designator));
+			n->type = DES_FIELD;
+			// free...
+			F(P == TOK_IDENT);
+			n->field = strdup(PS);
+			N;
+		} else {
+			break;
+		}
+		n->next = d1;
+		d1 = n;
+	}
+	if (d1) {
+		// free...
+		F(match(p, '='));
+	}
+	Designator *d = NULL;
+	while (d1) {
+		Designator *d1next = d1->next;
+		d1->next = d;
+		d = d1;
+		d1 = d1next;
+	}
+	Expr *e;
+	// free...
+	F(e = parse_initializer(p));
+	exprINIT_append(init, d, e);
+	return true;
+}
+
 static Expr *parse_initializer(Parser *p)
 {
 	if (match(p, '{')) {
 		ExprINIT *init = exprINIT();
-		Expr *e;
 		if (match(p, '}')) {
 			return (Expr *) init;
 		}
 
-		F(e = parse_initializer(p),
+		F(match_initialzer_item(p, init),
 		  tree_free((Expr *) init));
-		exprINIT_append(init, e);
 		while (match(p, ',')) {
-			e = parse_initializer(p);
-			if (!e) {
+			if (!match_initialzer_item(p, init))
 				break;
-			}
-			exprINIT_append(init, e);
 		}
 
 		if (match(p, '}')) {

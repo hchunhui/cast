@@ -40,9 +40,10 @@ ExprINIT *exprINIT()
 	return t;
 }
 
-void exprINIT_append(ExprINIT *init, Expr *e)
+void exprINIT_append(ExprINIT *init, Designator *d, Expr *e)
 {
-	(void) vec_push(&init->items, e);
+	ExprINITItem item = {d, e};
+	(void) vec_push(&init->items, item);
 }
 
 StmtBLOCK *stmtBLOCK()
