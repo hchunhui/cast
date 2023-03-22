@@ -967,9 +967,10 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 				tag = get_and_next(p);
 			}
 
-			EnumList *list = malloc(sizeof(EnumList));
-			vec_init(&(list->items));
+			EnumList *list = NULL;
 			if (match(p, '{')) {
+				list = malloc(sizeof(EnumList));
+				vec_init(&(list->items));
 				struct EnumPair_ pair = parse_enum_pair(p);
 				if (pair.id) {
 					vec_push(&(list->items), pair);
