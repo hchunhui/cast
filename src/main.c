@@ -724,8 +724,14 @@ static void stmt_printb(Stmt *h, int level)
 
 static void stmt_print(Stmt *h, int level)
 {
-	if (h->type != STMT_DECLS)
+	if (h->type != STMT_DECLS) {
+		if (level > 0 &&
+		    (h->type == STMT_CASE ||
+		     h->type == STMT_DEFAULT ||
+		     h->type == STMT_LABEL))
+			level--;
 		print_level(level);
+	}
 	switch (h->type) {
 	case STMT_EXPR: {
 		StmtEXPR *s = (StmtEXPR *) h;
@@ -813,10 +819,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("case ");
 		expr_print1(s->expr);
 		printf(":\n");
-		int nlevel = level;
-		if (s->stmt->type != STMT_CASE)
-			nlevel++;
-		stmt_print(s->stmt, nlevel);
+		stmt_print(s->stmt, level + 1);
 		break;
 	}
 	case STMT_DEFAULT: {
