@@ -968,11 +968,11 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
-			tflags |= parse_type_qualifier(p);
 			if (match(p, '{')) {
 				decls = parse_stmts(p);
 				F_(match(p, '}'), err, tree_free(&decls->h));
 			}
+			tflags |= parse_type_qualifier(p);
 			d.type = typeSTRUCT(is_union, tag, decls, tflags);
 			break;
 		}
