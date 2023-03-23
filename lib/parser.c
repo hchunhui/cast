@@ -1183,28 +1183,23 @@ Stmt *parse_decl(Parser *p)
 	tree_free(&d.funargs->h);
 	F(d.type);
 
-	if (d.is_typedef) {
-		if (match(p, ';')) {
-			if (d.ident)
-				symset(p, d.ident, SYM_TYPE);
-			return stmtTYPEDEF(d.ident, d.type);
-		} else {
-			tree_free(d.type);
-			free(d.ident);
-			return NULL;
-		}
-	}
-
+	bool is_typedef = d.is_typedef;
+	unsigned int symtype = is_typedef ? SYM_TYPE : SYM_IDENT;
 	if (d.ident)
-		symset(p, d.ident, SYM_IDENT);
+		symset(p, d.ident, symtype);
 	if (d.type->type == TYPE_FUN && P == '{') {
+		F(!is_typedef);
 		StmtBLOCK *b;
 		F(b = parse_block_stmt(p), tree_free(d.type), free(d.ident));
 		return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, b);
 	}
 
 	Stmt *decl1;
-	F(decl1 = make_decl(p, d), tree_free(d.type), free(d.ident));
+	if (is_typedef) {
+		decl1 = stmtTYPEDEF(d.ident, d.type);
+	} else {
+		F(decl1 = make_decl(p, d), tree_free(d.type), free(d.ident));
+	}
 
 	if (match(p, ';')) {
 		return decl1;
@@ -1235,8 +1230,12 @@ Stmt *parse_decl(Parser *p)
 				tree_free((Stmt *) decls);
 				return NULL;
 			}
-			symset(p, dd.ident, SYM_IDENT);
-			F(decl1 = make_decl(p, dd), tree_free((Stmt *) decls));
+			symset(p, dd.ident, symtype);
+			if (is_typedef) {
+				F(decl1 = stmtTYPEDEF(dd.ident, dd.type), tree_free((Stmt *) decls));
+			} else {
+				F(decl1 = make_decl(p, dd), tree_free((Stmt *) decls));
+			}
 			stmtDECLS_append(decls, decl1);
 		}
 		if (match(p, ';')) {
