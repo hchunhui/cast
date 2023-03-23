@@ -1349,6 +1349,9 @@ Stmt *parse_stmt(Parser *p)
 	case '{': {
 		return (Stmt *) parse_block_stmt(p);
 	}
+	case ';': {
+		N; return stmtSKIP();
+	}
 	default: {
 		Stmt *decl = parse_decl(p);
 		if (decl)
@@ -1374,8 +1377,7 @@ Stmt *parse_stmt(Parser *p)
 			F(match(p, ';'), tree_free(e));
 			return stmtEXPR(e);
 		} else {
-			F(match(p, ';'));
-			return stmtSKIP();
+			return NULL;
 		}
 	}
 	}
