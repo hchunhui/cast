@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 #include "map.h"
 
 #define SYM_UNKNOWN 0
@@ -13,6 +14,7 @@ struct Parser_ {
 	Lexer *lexer;
 	map_int_t symtabs[100];
 	int symtop;
+	int counter;
 };
 
 static int symlookup(Parser *p, const char *sym)
@@ -40,6 +42,7 @@ static void parser_init(Parser *p, Lexer *l)
 	map_init(&(p->symtabs[0]));
 	p->symtop = 1;
 	symset(p, "__builtin_va_list", SYM_TYPE);
+	p->counter = 0;
 }
 
 static void parser_free(Parser *p)
@@ -1207,6 +1210,19 @@ Stmt *parse_decl(Parser *p)
 		return decl1;
 	} else {
 		StmtDECLS *decls = stmtDECLS();
+		if (btype->type == TYPE_STRUCT) {
+			TypeSTRUCT *b = (TypeSTRUCT *) btype;
+			if (b->decls) {
+				if (!b->tag) {
+					char buf[64];
+					sprintf(buf, "__anon_struct%d", p->counter++);
+					b->tag = strdup(buf);
+				}
+				Type *ntype = typeSTRUCT(b->is_union, b->tag, b->decls, 0);
+				b->decls = NULL;
+				stmtDECLS_append(decls, stmtVARDECL(0, NULL, ntype, NULL, -1));
+			}
+		}
 		stmtDECLS_append(decls, decl1);
 		while (match(p, ',')) {
 			Declarator dd = d;
