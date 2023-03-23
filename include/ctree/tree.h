@@ -9,6 +9,7 @@
 #define TFLAG_CONST 1
 #define TFLAG_VOLATILE 2
 #define TFLAG_RESTRICT 4
+#define TFLAG_ARRAY_STATIC 8
 
 typedef struct EnumList_ EnumList;
 

@@ -763,10 +763,26 @@ static int parse_declarator0(Parser *p, Declarator *d)
 	}
 	while (1) {
 		if (match(p, '[')) {
-			unsigned int flags = parse_type_qualifier(p);
-			Expr *e;
-			e = parse_assignment_expr(p);
-			F(match(p, ']'), tree_free(e));
+			unsigned int flags = 0;
+			Expr *e = NULL;
+			bool is_static = false;
+			if (match(p, '*')) {
+				if(!match(p, ']')) {
+					F(e = parse_multiplicative_expr_post(
+						  p, applyUOP(EXPR_OP_DEREF, parse_cast_expr(p)), 16));
+					F(match(p, ']'), tree_free(e));
+				}
+			} else {
+				is_static = match(p, TOK_STATIC);
+				flags = parse_type_qualifier(p);
+				if (!is_static)
+					match(p, TOK_STATIC);
+				if (!match(p, ']')) {
+					F(e = parse_assignment_expr(p));
+					F(match(p, ']'), tree_free(e));
+				}
+			}
+			flags |= is_static ? TFLAG_ARRAY_STATIC : 0;
 			d->type = typeARRAY(d->type, e, flags);
 		} else if (match(p, '(')) {
 			TypeFUN *n = typeFUN(d->type);

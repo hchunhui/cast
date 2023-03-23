@@ -165,8 +165,11 @@ static void type_print_annot(Type *type, bool simple)
 		printf("array(");
 		type_print_annot(((TypeARRAY *) type)->t, simple);
 		printf(", ");
-		if (((TypeARRAY *) type)->n)
+		if (((TypeARRAY *) type)->n) {
+			if (((TypeARRAY *) type)->flags & TFLAG_ARRAY_STATIC)
+				printf("static ");
 			expr_print2(((TypeARRAY *) type)->n);
+		}
 		printf(")");
 		break;
 	case TYPE_FUN:
@@ -345,8 +348,11 @@ static void type_print_declarator2(Type *type)
 	case TYPE_ARRAY:
 		printf("[");
 		type_flags_print(type);
-		if (((TypeARRAY *) type)->n)
+		if (((TypeARRAY *) type)->n) {
+			if (((TypeARRAY *) type)->flags & TFLAG_ARRAY_STATIC)
+				printf("static ");
 			expr_print1(((TypeARRAY *) type)->n);
+		}
 		printf("])");
 		type_print_declarator2(((TypeARRAY *) type)->t);
 		return;
