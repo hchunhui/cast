@@ -859,19 +859,8 @@ static struct EnumPair_ parse_enum_pair(Parser *p)
 }
 
 static StmtBLOCK *parse_stmts(Parser *p);
-static Declarator parse_type1(Parser *p, Type **pbtype)
+static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 {
-	Declarator d, err;
-	d.is_typedef = false;
-	d.flags = 0;
-	d.type = NULL;
-	d.ident = NULL;
-	d.funargs = NULL;
-	err.is_typedef = false;
-	err.flags = 0;
-	err.type = NULL;
-	err.ident = NULL;
-	err.funargs = NULL;
 	unsigned int tflags = 0;
 
 	int is_signed = 0;
@@ -891,13 +880,13 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 		switch (P) {
 		// storage-class-specifier
 		case TOK_TYPEDEF:
-			d.is_typedef = true;
+			pd->is_typedef = true;
 			N; break;
 		case TOK_EXTERN:
-			d.flags |= DFLAG_EXTERN;
+			pd->flags |= DFLAG_EXTERN;
 			N; break;
 		case TOK_STATIC:
-			d.flags |= DFLAG_STATIC;
+			pd->flags |= DFLAG_STATIC;
 			N; break;
 		case TOK_AUTO: // ignore
 		case TOK_REGISTER: // ignore
@@ -910,7 +899,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			break;
 		// function-specifier
 		case TOK_INLINE:
-			d.flags |= DFLAG_INLINE;
+			pd->flags |= DFLAG_INLINE;
 			N; break;
 		// type-specifier
 		case TOK_SIGNED:
@@ -947,10 +936,10 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			int sv = symlookup(p, PS);
 			if (sv == SYM_TYPE) {
 				int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
-				if (d.type == NULL && tcount == 0) {
+				if (pd->type == NULL && tcount == 0) {
 					char *name = get_and_next(p);
 					tflags |= parse_type_qualifier(p);
-					d.type = typeTYPEDEF(name, tflags);
+					pd->type = typeTYPEDEF(name, tflags);
 					break;
 				}
 			}
@@ -962,7 +951,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 		{
 			bool is_union = P == TOK_UNION;
 			N;
-			F_(d.type == NULL, err);
+			F_(pd->type == NULL, false);
 			char *tag = NULL;
 			StmtBLOCK *decls = NULL;
 			if (P == TOK_IDENT) {
@@ -970,16 +959,16 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 			}
 			if (match(p, '{')) {
 				decls = parse_stmts(p);
-				F_(match(p, '}'), err, tree_free(&decls->h));
+				F_(match(p, '}'), false, tree_free(&decls->h));
 			}
 			tflags |= parse_type_qualifier(p);
-			d.type = typeSTRUCT(is_union, tag, decls, tflags);
+			pd->type = typeSTRUCT(is_union, tag, decls, tflags);
 			break;
 		}
 		case TOK_ENUM:
 		{
 			N;
-			F_(d.type == NULL, err);
+			F_(pd->type == NULL, false);
 			char *tag = NULL;
 			StmtBLOCK *decls = NULL;
 			if (P == TOK_IDENT) {
@@ -1001,7 +990,7 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 					}
 				}
 				if (match(p, '}')) {
-					d.type = typeENUM(tag, list, tflags);
+					pd->type = typeENUM(tag, list, tflags);
 					break;
 				}
 				struct EnumPair_ *p;
@@ -1012,9 +1001,9 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 				}
 				vec_deinit(&(list->items));
 				free(list);
-				return err;
+				return false;
 			}
-			d.type = typeENUM(tag, list, tflags);
+			pd->type = typeENUM(tag, list, tflags);
 			break;
 		}
 		default:
@@ -1025,53 +1014,71 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 
 	int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
 	int scount = is_signed + is_unsigned;
-	if (d.type) {
+	if (pd->type) {
 		if (tcount + scount + is_short + long_count) {
-			tree_free(d.type);
-			d.type = NULL;
+			tree_free(pd->type);
+			pd->type = NULL;
 		}
 	} else {
 		if (tcount == 0 || is_int) {
 			if (is_short) {
 				if (long_count == 0) {
-					d.type = is_unsigned ? typeUSHORT(tflags) : typeSHORT(tflags);
+					pd->type = is_unsigned ? typeUSHORT(tflags) : typeSHORT(tflags);
 				}
 			} else if (long_count == 0) {
 				if (tcount || scount) {
-					d.type = is_unsigned ? typeUINT(tflags) : typeINT(tflags);
+					pd->type = is_unsigned ? typeUINT(tflags) : typeINT(tflags);
 				}
 			} else if (long_count == 1) {
-				d.type = is_unsigned ? typeULONG(tflags) : typeLONG(tflags);
+				pd->type = is_unsigned ? typeULONG(tflags) : typeLONG(tflags);
 			} else if (long_count == 2) {
-				d.type = is_unsigned ? typeULLONG(tflags) : typeLLONG(tflags);
+				pd->type = is_unsigned ? typeULLONG(tflags) : typeLLONG(tflags);
 			}
 		} else {
 			if (is_short + long_count == 0) {
 				if (is_char) {
 					if (is_char)
-						d.type = is_unsigned ? typeUCHAR(tflags) : typeCHAR(tflags);
+						pd->type = is_unsigned ? typeUCHAR(tflags) : typeCHAR(tflags);
 				} else if (scount == 0) {
 					if (is_bool)
-						d.type = typeBOOL(tflags);
+						pd->type = typeBOOL(tflags);
 					else if (is_float)
-						d.type = typeFLOAT(tflags);
+						pd->type = typeFLOAT(tflags);
 					else if (is_double)
-						d.type = typeDOUBLE(tflags);
+						pd->type = typeDOUBLE(tflags);
 					else if (is_void)
-						d.type = typeVOID(tflags);
+						pd->type = typeVOID(tflags);
 				}
 			} else {
 				if (is_double && long_count == 1 && !is_short) {
-					d.type = typeLDOUBLE(tflags);
+					pd->type = typeLDOUBLE(tflags);
 				}
 			}
 		}
 	}
-	F_(d.type, err);
+	F_(pd->type, false);
 	if (pbtype)
-		*pbtype = d.type;
-	F_(parse_declarator(p, &d), err);
-	return d;
+		*pbtype = pd->type;
+	F_(parse_declarator(p, pd), false);
+	return true;
+}
+
+static Declarator parse_type1(Parser *p, Type **pbtype)
+{
+	Declarator d, err;
+	d.is_typedef = false;
+	d.flags = 0;
+	d.type = NULL;
+	d.ident = NULL;
+	d.funargs = NULL;
+	err.is_typedef = false;
+	err.flags = 0;
+	err.type = NULL;
+	err.ident = NULL;
+	err.funargs = NULL;
+	if (parse_type1_(p, pbtype, &d))
+		return d;
+	return err;
 }
 
 static StmtBLOCK *parse_stmts(Parser *p)
@@ -1192,10 +1199,8 @@ Stmt *make_decl(Parser *p, Declarator d)
 	return decl1;
 }
 
-Stmt *parse_decl(Parser *p)
+Stmt *parse_decl0(Parser *p, Declarator d, Type *btype)
 {
-	Type *btype;
-	Declarator d = parse_type1(p, &btype);
 	tree_free(&d.funargs->h);
 	F(d.type);
 
@@ -1261,6 +1266,38 @@ Stmt *parse_decl(Parser *p)
 		}
 	}
 	return NULL;
+}
+
+static Declarator parse_type1_ident_post(Parser *p, char *id, Type **pbtype)
+{
+	Declarator d, err;
+	d.is_typedef = false;
+	d.flags = 0;
+	d.type = NULL;
+	d.ident = NULL;
+	d.funargs = NULL;
+	err.is_typedef = false;
+	err.flags = 0;
+	err.type = NULL;
+	err.ident = NULL;
+	err.funargs = NULL;
+
+	int sv = symlookup(p, id);
+	unsigned int tflags = 0;
+	if (sv == SYM_TYPE) {
+		tflags |= parse_type_qualifier(p);
+		d.type = typeTYPEDEF(id, tflags);
+		if (parse_type1_(p, pbtype, &d))
+			return d;
+	}
+	return err;
+}
+
+Stmt *parse_decl(Parser *p)
+{
+	Type *btype;
+	Declarator d = parse_type1(p, &btype);
+	return parse_decl0(p, d, btype);
 }
 
 Stmt *parse_stmt(Parser *p)
@@ -1384,10 +1421,6 @@ Stmt *parse_stmt(Parser *p)
 		N; return stmtSKIP();
 	}
 	default: {
-		Stmt *decl = parse_decl(p);
-		if (decl)
-			return decl;
-
 		Expr *e;
 		if (P == TOK_IDENT) {
 			char *id = get_and_next(p);
@@ -1397,11 +1430,19 @@ Stmt *parse_stmt(Parser *p)
 				F(s = parse_stmt(p), free(id));
 				return stmtLABEL(id, s);
 			} else {
+				Type *btype;
+				Declarator d = parse_type1_ident_post(p, id, &btype);
+				Stmt *decl = parse_decl0(p, d, btype);
+				if (decl)
+					return decl;
 				// maybe an expression
 				Expr *e0 = parse_ident_or_builtin(p, id);
 				e = parse_postfix_expr_post(p, e0, 17);
 			}
 		} else {
+			Stmt *decl = parse_decl(p); // XXX
+			if (decl)
+				return decl;
 			e = parse_expr(p);
 		}
 		if (e) {
