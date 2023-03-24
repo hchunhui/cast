@@ -1174,12 +1174,6 @@ static Expr *parse_initializer(Parser *p)
 	return parse_assignment_expr(p);
 }
 
-static Expr *parse_initializer1(Parser *p)
-{
-	F(match(p, '='));
-	return parse_initializer(p);
-}
-
 Stmt *make_decl(Parser *p, Declarator d)
 {
 	Stmt *decl1;
@@ -1194,7 +1188,11 @@ Stmt *make_decl(Parser *p, Declarator d)
 				return NULL;
 			}
 		}
-		decl1 = stmtVARDECL(d.flags, d.ident, d.type, parse_initializer1(p), bitfield);
+		Expr *init = NULL;
+		if (match(p, '=')) {
+			F(init = parse_initializer(p));
+		}
+		decl1 = stmtVARDECL(d.flags, d.ident, d.type, init, bitfield);
 	}
 	return decl1;
 }
