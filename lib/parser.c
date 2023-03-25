@@ -21,16 +21,6 @@ struct Parser_ {
 	int next_count;
 };
 
-static int symlookup0(Parser *p, const char *sym)
-{
-	int v = SYM_IDENT;
-	int *pv = map_get(&(p->scopes->syms), sym);
-	if (pv) {
-		v = *pv;
-	}
-	return v;
-}
-
 static int symlookup(Parser *p, const char *sym)
 {
 	int v = SYM_IDENT;
@@ -837,14 +827,13 @@ static int parse_declarator0(Parser *p, Declarator *d)
 		d->type = typePTR(d->type, flags);
 		return 1;
 	}
-	if (P == TOK_IDENT &&
-	    (d->is_typedef || symlookup0(p, PS) != SYM_TYPE)) {
+	if (P == TOK_IDENT) {
 		F(d->ident == NULL);
 		d->ident = get_and_next(p);
 	} else if (match(p, '(')) {
 		if (P == '*' || P == '(' ||
 		    (P == TOK_IDENT &&
-		     (d->is_typedef || symlookup0(p, PS) != SYM_TYPE))) {
+		     (d->is_typedef || symlookup(p, PS) != SYM_TYPE))) {
 			F(parse_declarator0(p, d));
 			F(match(p, ')'));
 		} else {
