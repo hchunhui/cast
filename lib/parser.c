@@ -20,6 +20,16 @@ struct Parser_ {
 	int counter;
 };
 
+static int symlookup0(Parser *p, const char *sym)
+{
+	int v = SYM_IDENT;
+	int *pv = map_get(&(p->scopes->syms), sym);
+	if (pv) {
+		v = *pv;
+	}
+	return v;
+}
+
 static int symlookup(Parser *p, const char *sym)
 {
 	int v = SYM_IDENT;
@@ -818,21 +828,30 @@ static unsigned int parse_type_qualifier(Parser *p)
 static Declarator parse_type1(Parser *p, Type **pbtype);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
+	bool flag = false;
 	if (match(p, '*')) {
 		unsigned int flags = parse_type_qualifier(p);
 		F(parse_declarator0(p, d));
 		d->type = typePTR(d->type, flags);
 		return 1;
 	}
-	if (P == TOK_IDENT) {
+	if (P == TOK_IDENT &&
+	    (d->is_typedef || symlookup0(p, PS) != SYM_TYPE)) {
 		F(d->ident == NULL);
 		d->ident = get_and_next(p);
 	} else if (match(p, '(')) {
-		F(parse_declarator0(p, d));
-		F(match(p, ')'));
+		if (P == '*' || P == '(' ||
+		    (P == TOK_IDENT &&
+		     (d->is_typedef || symlookup0(p, PS) != SYM_TYPE))) {
+			F(parse_declarator0(p, d));
+			F(match(p, ')'));
+		} else {
+			flag = true;
+		}
 	}
+
 	while (1) {
-		if (match(p, '[')) {
+		if (!flag && match(p, '[')) {
 			unsigned int flags = 0;
 			Expr *e = NULL;
 			bool is_static = false;
@@ -854,7 +873,8 @@ static int parse_declarator0(Parser *p, Declarator *d)
 			}
 			flags |= is_static ? TFLAG_ARRAY_STATIC : 0;
 			d->type = typeARRAY(d->type, e, flags);
-		} else if (match(p, '(')) {
+		} else if (flag || match(p, '(')) {
+			flag = false;
 			TypeFUN *n = typeFUN(d->type);
 			if (match(p, ')')) {
 				d->type = &n->h;
