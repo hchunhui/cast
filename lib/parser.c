@@ -1472,12 +1472,12 @@ Stmt *parse_stmt(Parser *p)
 	case TOK_SWITCH: {
 		N;
 		Expr *e;
-		StmtBLOCK *b;
+		Stmt *b;
 		F(match(p, '('));
 		enter_scope(p);
 		F(e = parse_expr(p), leave_scope(p));
 		F(match(p, ')'), leave_scope(p), tree_free(e));;
-		F(b = parse_block_stmt(p), leave_scope(p), tree_free(e));
+		F(b = parse_stmt(p), leave_scope(p), tree_free(e));
 		leave_scope(p);
 		return stmtSWITCH(e, b);
 	}

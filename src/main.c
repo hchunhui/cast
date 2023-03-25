@@ -833,7 +833,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("switch (");
 		expr_print(s->expr);
 		printf(")\n");
-		stmt_printb((Stmt *) (s->block), level + 1);
+		stmt_printb(s->body, level + 1);
 		printf("\n");
 		break;
 	}
