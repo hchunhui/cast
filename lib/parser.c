@@ -339,6 +339,7 @@ static Expr *applyUOP(ExprUnOp op, Expr *e)
 	return NULL;
 }
 
+static Expr *parse_initializer(Parser *p);
 static Expr *parse_cast_expr(Parser *p);
 static Expr *parse_unary_expr(Parser *p)
 {
@@ -369,10 +370,20 @@ static Expr *parse_unary_expr(Parser *p)
 			Type *t = parse_type(p);
 			if (t) {
 				F(match(p, ')'), tree_free(t));
+				// sizeof compound litera: sizeof (type) {...}
+				if (P == '{') {
+					Expr *ei = parse_initializer(p);
+					if (ei) {
+						e = parse_postfix_expr_post(p, exprCAST(t, ei), 4);
+						if (e)
+							return exprSIZEOF(e);
+					}
+					return NULL;
+				}
 				return exprSIZEOFT(t);
 			}
 			Expr *e;
-			F(e = parse_postfix_expr_post(p, parse_parentheses_post(p), 3));
+			F(e = parse_postfix_expr_post(p, parse_parentheses_post(p), 4));
 			return exprSIZEOF(e);
 		} else {
 			Expr *e;
@@ -383,7 +394,6 @@ static Expr *parse_unary_expr(Parser *p)
 	return NULL;
 }
 
-static Expr *parse_initializer(Parser *p);
 static Expr *parse_cast_expr(Parser *p)
 {
 	if (match(p, '(')) {
@@ -396,7 +406,7 @@ static Expr *parse_cast_expr(Parser *p)
 			} else {
 				F(e = parse_cast_expr(p), tree_free(t));
 			}
-			return exprCAST(t, e);
+			return parse_postfix_expr_post(p, exprCAST(t, e), 4);
 		}
 		Expr *e = parse_parentheses_post(p);
 		return parse_postfix_expr_post(p, e, 4);
