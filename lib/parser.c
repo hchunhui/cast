@@ -121,12 +121,6 @@ void parser_delete(Parser *p)
 	free(p);
 }
 
-static Type *type_copy(Type *t)
-{
-	// TODO
-	return t;
-}
-
 #define P lexer_peek(p->lexer)
 #define PS lexer_peek_string(p->lexer)
 #define PSL lexer_peek_string_len(p->lexer)
@@ -761,6 +755,16 @@ typedef struct {
 	struct scope_item *funscope;
 } Declarator;
 
+static void init_declarator(Declarator *pd)
+{
+	pd->is_typedef = false;
+	pd->flags = 0;;
+	pd->type = NULL;
+	pd->ident = NULL;
+	pd->funargs = NULL;
+	pd->funscope = NULL;
+}
+
 static void fix_type(Declarator *d, Type *btype)
 {
 	Type *tnew = btype;
@@ -1164,18 +1168,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 static Declarator parse_type1(Parser *p, Type **pbtype)
 {
 	Declarator d, err;
-	d.is_typedef = false;
-	d.flags = 0;
-	d.type = NULL;
-	d.ident = NULL;
-	d.funargs = NULL;
-	d.funscope = NULL;
-	err.is_typedef = false;
-	err.flags = 0;
-	err.type = NULL;
-	err.ident = NULL;
-	err.funargs = NULL;
-	err.funscope = NULL;
+	init_declarator(&d);
+	init_declarator(&err);
 	if (parse_type1_(p, pbtype, &d))
 		return d;
 	return err;
@@ -1357,7 +1351,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 		stmtDECLS_append(decls, decl1);
 		while (match(p, ',')) {
 			Declarator dd = d;
-			dd.type = type_copy(btype);
+			dd.type = btype;
 			dd.ident = NULL;
 			dd.funargs = NULL;
 			parse_declarator(p, &dd);
@@ -1389,19 +1383,8 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 static Declarator parse_type1_ident_post(Parser *p, char *id, Type **pbtype)
 {
 	Declarator d, err;
-	d.is_typedef = false;
-	d.flags = 0;
-	d.type = NULL;
-	d.ident = NULL;
-	d.funargs = NULL;
-	d.funscope = NULL;
-	err.is_typedef = false;
-	err.flags = 0;
-	err.type = NULL;
-	err.ident = NULL;
-	err.funargs = NULL;
-	err.funscope = NULL;
-
+	init_declarator(&d);
+	init_declarator(&err);
 	int sv = symlookup(p, id);
 	unsigned int tflags = 0;
 	if (sv == SYM_TYPE) {
