@@ -11,7 +11,7 @@ void parser_delete(Parser *p);
 
 StmtBLOCK *parse_translation_unit(Parser *p);
 
-Stmt *parse_decl(Parser *p);
+bool parse_decl(Parser *p, Stmt **);
 Stmt *parse_stmt(Parser *p);
 Type *parse_type(Parser *p);
 Expr *parse_expr(Parser *p);

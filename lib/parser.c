@@ -18,6 +18,7 @@ struct Parser_ {
 	Lexer *lexer;
 	struct scope_item *scopes;
 	int counter;
+	int next_count;
 };
 
 static int symlookup0(Parser *p, const char *sym)
@@ -110,6 +111,7 @@ static void parser_init(Parser *p, Lexer *l)
 	enter_scope(p);
 	symset(p, "__builtin_va_list", SYM_TYPE);
 	p->counter = 0;
+	p->next_count = 0;
 }
 
 static void parser_free(Parser *p)
@@ -142,7 +144,7 @@ static Type *type_copy(Type *t)
 #define PUI lexer_peek_uint(p->lexer)
 #define PF lexer_peek_float(p->lexer)
 #define PC lexer_peek_char(p->lexer)
-#define N lexer_next(p->lexer)
+#define N (lexer_next(p->lexer), p->next_count++)
 #define F_(cond, errval, ...) do { if (!(cond)) { __VA_ARGS__; return errval; } } while (0)
 #define F(cond, ...) F_(cond, 0, ## __VA_ARGS__)
 
@@ -1407,11 +1409,16 @@ static Declarator parse_type1_ident_post(Parser *p, char *id, Type **pbtype)
 	return err;
 }
 
-Stmt *parse_decl(Parser *p)
+bool parse_decl(Parser *p, Stmt **pstmt)
 {
 	Type *btype;
+	int old_count = p->next_count;
 	Declarator d = parse_type1(p, &btype);
-	return parse_decl0(p, d, btype);
+	Stmt *res = parse_decl0(p, d, btype);
+	int new_count = p->next_count;
+	if (pstmt)
+		*pstmt = res;
+	return old_count != new_count;
 }
 
 Stmt *parse_stmt(Parser *p)
@@ -1471,9 +1478,9 @@ Stmt *parse_stmt(Parser *p)
 		Stmt *init99, *body;
 		F(match(p, '('));
 		enter_scope(p);
-		init99 = parse_decl(p);
-		if (init99) {
-			F((init99->type == STMT_VARDECL), leave_scope(p), tree_free(init99));
+		bool is_stmt = parse_decl(p, &init99);
+		if (is_stmt) {
+			F((init99 && init99->type == STMT_VARDECL), leave_scope(p), tree_free(init99));
 		} else {
 			init = parse_expr(p);
 			F(match(p, ';'), leave_scope(p), tree_free(init));
@@ -1561,17 +1568,19 @@ Stmt *parse_stmt(Parser *p)
 				return stmtLABEL(id, s);
 			} else {
 				Type *btype;
+				int old_count = p->next_count;
 				Declarator d = parse_type1_ident_post(p, id, &btype);
 				Stmt *decl = parse_decl0(p, d, btype);
-				if (decl)
+				int new_count = p->next_count;
+				if (old_count != new_count)
 					return decl;
 				// maybe an expression
 				Expr *e0 = parse_ident_or_builtin(p, id);
 				e = parse_postfix_expr_post(p, e0, 17);
 			}
 		} else {
-			Stmt *decl = parse_decl(p); // XXX
-			if (decl)
+			Stmt *decl;
+			if (parse_decl(p, &decl))
 				return decl;
 			e = parse_expr(p);
 		}
