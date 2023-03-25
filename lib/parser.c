@@ -6,23 +6,25 @@
 #include <stdio.h>
 #include "map.h"
 
-#define SYM_UNKNOWN 0
 #define SYM_IDENT 1
 #define SYM_TYPE 2
 
+struct scope_item {
+	struct scope_item *next;
+	map_int_t syms;
+};
+
 struct Parser_ {
 	Lexer *lexer;
-	map_int_t symtabs[100];
-	int symtop;
+	struct scope_item *scopes;
 	int counter;
 };
 
 static int symlookup(Parser *p, const char *sym)
 {
-	int top = p->symtop - 1;
-	int v = SYM_UNKNOWN;
-	for (; top >= 0; top--) {
-		int *pv = map_get(&(p->symtabs[top]), sym);
+	int v = SYM_IDENT;
+	for (struct scope_item *i = p->scopes; i; i = i->next) {
+		int *pv = map_get(&(i->syms), sym);
 		if (pv) {
 			v = *pv;
 			break;
@@ -31,16 +33,71 @@ static int symlookup(Parser *p, const char *sym)
 	return v;
 }
 
-static void symset(Parser *p, const char *sym, int sv)
+static bool symset(Parser *p, const char *sym, int sv)
 {
-	map_set(&(p->symtabs[p->symtop - 1]), sym, sv);
+	int *pv = map_get(&(p->scopes->syms), sym);
+	if (pv && *pv != sv)
+		return false;
+	map_set(&(p->scopes->syms), sym, sv);
+	return true;
+}
+
+static struct scope_item *get_scope(Parser *p)
+{
+	struct scope_item *i = p->scopes;
+	p->scopes = i->next;
+	return i;
+}
+
+static struct scope_item *dup_scope(Parser *p)
+{
+	struct scope_item *i = malloc(sizeof(struct scope_item));
+	i->next = NULL;
+	map_init(&(i->syms));
+
+	const char *key;
+	map_iter_t iter = map_iter(&(p->scopes->syms));
+	while ((key = map_next(&(p->scopes->syms), &iter))) {
+		map_set(&(i->syms), key, *map_get(&(p->scopes->syms), key));
+	}
+	return i;
+}
+
+static void restore_scope(Parser *p, struct scope_item *i)
+{
+	if (i == NULL) {
+		i = malloc(sizeof(struct scope_item));
+		i->next = NULL;
+		map_init(&(i->syms));
+	}
+	i->next = p->scopes;
+	p->scopes = i;
+}
+
+static void free_scope(struct scope_item *i)
+{
+	if (i) {
+		map_deinit(&(i->syms));
+		free(i);
+	}
+}
+
+static void enter_scope(Parser *p)
+{
+	restore_scope(p, NULL);
+}
+
+static void leave_scope(Parser *p)
+{
+	struct scope_item *i = get_scope(p);
+	free_scope(i);
 }
 
 static void parser_init(Parser *p, Lexer *l)
 {
 	p->lexer = l;
-	map_init(&(p->symtabs[0]));
-	p->symtop = 1;
+	p->scopes = NULL;
+	enter_scope(p);
 	symset(p, "__builtin_va_list", SYM_TYPE);
 	p->counter = 0;
 }
@@ -144,6 +201,8 @@ static Expr *parse_ident_or_builtin(Parser *p, char *id)
 		F(match(p, ')'), free(mem), tree_free(type), free(id));
 		return exprOFFSETOF(type, mem);
 	}
+	if (symlookup(p, id) != SYM_IDENT)
+		return NULL;
 	return exprIDENT(id);
 }
 
@@ -687,6 +746,7 @@ typedef struct {
 	Type *type;
 	char *ident;
 	StmtBLOCK *funargs;
+	struct scope_item *funscope;
 } Declarator;
 
 static void fix_type(Declarator *d, Type *btype)
@@ -789,6 +849,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 			if (match(p, ')')) {
 				d->type = &n->h;
 			} else {
+				enter_scope(p);
 				StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
 				Declarator d1 = parse_type1(p, NULL);
 				if (d1.type == NULL) {
@@ -799,11 +860,16 @@ static int parse_declarator0(Parser *p, Declarator *d)
 					tree_free(d1.type);
 					d1.type = NULL;
 					d->type = &n->h;
+					leave_scope(p);
 					continue;
 				}
 				typeFUN_append(n, d1.type);
-				if (funargs)
+				if (funargs) {
 					stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
+					if (d1.ident) {
+						F(symset(p, d1.ident, SYM_IDENT), leave_scope(p));
+					}
+				}
 				while (match(p, ',')) {
 					if (match(p, TOK_DOT3)) {
 						n->va_arg = true;
@@ -814,13 +880,22 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						tree_free(&n->h);
 					}
 					typeFUN_append(n, d1.type);
-					if (funargs)
+					if (funargs) {
 						stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
+						if (d1.ident) {
+							F(symset(p, d1.ident, SYM_IDENT), leave_scope(p));
+						}
+					}
 				}
-				F(match(p, ')'), tree_free(&n->h));
+				F(match(p, ')'), leave_scope(p), tree_free(&n->h));
 				d->type = &n->h;
-				if (funargs)
+				if (funargs) {
 					d->funargs = funargs;
+					assert (d->funscope == NULL);
+					d->funscope = get_scope(p);
+				} else {
+					leave_scope(p);
+				}
 			}
 		} else {
 			break;
@@ -842,16 +917,15 @@ static struct EnumPair_ parse_enum_pair(Parser *p)
 {
 	struct EnumPair_ ret = {NULL, NULL};
 	if (P == TOK_IDENT) {
-		int sv = symlookup(p, PS);
-		if (sv == SYM_UNKNOWN) {
-			symset(p, PS, SYM_IDENT);
-			ret.id = get_and_next(p);
-			if (match(p, '=')) {
-				ret.val = parse_assignment_expr(p);
-				if (!ret.val) {
-					free((char *) ret.id);
-					ret.id = NULL;
-				}
+		if (!symset(p, PS, SYM_IDENT)) {
+			return ret;
+		}
+		ret.id = get_and_next(p);
+		if (match(p, '=')) {
+			ret.val = parse_assignment_expr(p);
+			if (!ret.val) {
+				free((char *) ret.id);
+				ret.id = NULL;
 			}
 		}
 	}
@@ -935,8 +1009,9 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		case TOK_IDENT: {
 			int sv = symlookup(p, PS);
 			if (sv == SYM_TYPE) {
-				int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
-				if (pd->type == NULL && tcount == 0) {
+				int xcount = is_int + is_bool + is_char + is_float + is_double + is_void +
+					is_signed + is_unsigned + is_short + long_count;
+				if (pd->type == NULL && xcount == 0) {
 					char *name = get_and_next(p);
 					tflags |= parse_type_qualifier(p);
 					pd->type = typeTYPEDEF(name, tflags);
@@ -958,7 +1033,9 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 				tag = get_and_next(p);
 			}
 			if (match(p, '{')) {
+				enter_scope(p);
 				decls = parse_stmts(p);
+				leave_scope(p);
 				F_(match(p, '}'), false, tree_free(&decls->h));
 			}
 			tflags |= parse_type_qualifier(p);
@@ -1071,11 +1148,13 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 	d.type = NULL;
 	d.ident = NULL;
 	d.funargs = NULL;
+	d.funscope = NULL;
 	err.is_typedef = false;
 	err.flags = 0;
 	err.type = NULL;
 	err.ident = NULL;
 	err.funargs = NULL;
+	err.funscope = NULL;
 	if (parse_type1_(p, pbtype, &d))
 		return d;
 	return err;
@@ -1084,17 +1163,11 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 static StmtBLOCK *parse_stmts(Parser *p)
 {
 	StmtBLOCK *block = stmtBLOCK();
-	assert(p->symtop < 100);
-	map_init(&(p->symtabs[p->symtop]));
-	p->symtop++;
 	while (P != '}' && P != TOK_END) {
 		Stmt *s;
-		F(s = parse_stmt(p), tree_free(&block->h),
-		  p->symtop--, map_deinit(&(p->symtabs[p->symtop])));
+		F(s = parse_stmt(p), tree_free(&block->h));
 		stmtBLOCK_append(block, s);
 	}
-	p->symtop--;
-	map_deinit(&(p->symtabs[p->symtop]));
 	return block;
 }
 
@@ -1102,7 +1175,9 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 {
 	StmtBLOCK *block;
 	F(match(p, '{'));
-	F(block = parse_stmts(p));
+	enter_scope(p);
+	F(block = parse_stmts(p), leave_scope(p));
+	leave_scope(p);
 	F(match(p, '}'), tree_free(&block->h));
 	return block;
 }
@@ -1199,20 +1274,26 @@ Stmt *make_decl(Parser *p, Declarator d)
 
 Stmt *parse_decl0(Parser *p, Declarator d, Type *btype)
 {
-	tree_free(&d.funargs->h);
 	F(d.type);
 
 	bool is_typedef = d.is_typedef;
 	unsigned int symtype = is_typedef ? SYM_TYPE : SYM_IDENT;
 	if (d.ident)
-		symset(p, d.ident, symtype);
+		if (!symset(p, d.ident, symtype)) {
+			return NULL;
+		}
+
 	if (d.type->type == TYPE_FUN && P == '{') {
 		F(!is_typedef);
 		StmtBLOCK *b;
-		F(b = parse_block_stmt(p), tree_free(d.type), free(d.ident));
+		restore_scope(p, d.funscope);
+		b = parse_block_stmt(p);
+		leave_scope(p);
+		F(b, tree_free(d.type), free(d.ident));
 		return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, b);
 	}
 
+	tree_free(&d.funargs->h);
 	Stmt *decl1;
 	if (is_typedef) {
 		decl1 = stmtTYPEDEF(d.ident, d.type);
@@ -1249,7 +1330,10 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype)
 				tree_free((Stmt *) decls);
 				return NULL;
 			}
-			symset(p, dd.ident, symtype);
+			if (!symset(p, dd.ident, symtype)) {
+				return NULL;
+			}
+
 			if (is_typedef) {
 				F(decl1 = stmtTYPEDEF(dd.ident, dd.type), tree_free((Stmt *) decls));
 			} else {
@@ -1274,11 +1358,13 @@ static Declarator parse_type1_ident_post(Parser *p, char *id, Type **pbtype)
 	d.type = NULL;
 	d.ident = NULL;
 	d.funargs = NULL;
+	d.funscope = NULL;
 	err.is_typedef = false;
 	err.flags = 0;
 	err.type = NULL;
 	err.ident = NULL;
 	err.funargs = NULL;
+	err.funscope = NULL;
 
 	int sv = symlookup(p, id);
 	unsigned int tflags = 0;
@@ -1306,13 +1392,19 @@ Stmt *parse_stmt(Parser *p)
 		Expr *e;
 		Stmt *s1, *s2;
 		F(match(p, '('));
-		F(e = parse_expr(p));
-		F(match(p, ')'), tree_free(e));
-		F(s1 = parse_stmt(p), tree_free(e));
+		enter_scope(p);
+		F(e = parse_expr(p), leave_scope(p));
+		struct scope_item *ifc = dup_scope(p);
+		F(match(p, ')'), leave_scope(p), tree_free(e));
+		F(s1 = parse_stmt(p), leave_scope(p), tree_free(e));
+		leave_scope(p);
 		if (match(p, TOK_ELSE)) {
-			F(s2 = parse_stmt(p), tree_free(e), tree_free(s1));
+			restore_scope(p, ifc);
+			F(s2 = parse_stmt(p), leave_scope(p), tree_free(e), tree_free(s1));
+			leave_scope(p);
 			return stmtIF(e, s1, s2);
 		}
+		free_scope(ifc);
 		return stmtIF(e, s1, NULL);
 	}
 	case TOK_WHILE: {
@@ -1320,19 +1412,25 @@ Stmt *parse_stmt(Parser *p)
 		Expr *e;
 		Stmt *s;
 		F(match(p, '('));
-		F(e = parse_expr(p));
-		F(match(p, ')'), tree_free(e));
-		F(s = parse_stmt(p), tree_free(e));
+		enter_scope(p);
+		F(e = parse_expr(p), leave_scope(p));
+		F(match(p, ')'), leave_scope(p), tree_free(e));
+		F(s = parse_stmt(p), leave_scope(p), tree_free(e));
+		leave_scope(p);
 		return stmtWHILE(e, s);
 	}
 	case TOK_DO: {
 		N;
 		Expr *e;
 		Stmt *s;
-		F(s = parse_stmt(p));
+		enter_scope(p);
+		F(s = parse_stmt(p), leave_scope(p));
+		leave_scope(p);
 		F(match(p, TOK_WHILE), tree_free(s));
 		F(match(p, '('), tree_free(s));
-		F(e = parse_expr(p), tree_free(s));
+		enter_scope(p);
+		F(e = parse_expr(p), leave_scope(p), tree_free(s));
+		leave_scope(p);
 		F(match(p, ')'), tree_free(s), tree_free(e));
 		F(match(p, ';'), tree_free(s), tree_free(e));
 		return stmtDO(e, s);
@@ -1342,18 +1440,20 @@ Stmt *parse_stmt(Parser *p)
 		Expr *init, *cond, *step;
 		Stmt *init99, *body;
 		F(match(p, '('));
+		enter_scope(p);
 		init99 = parse_decl(p);
 		if (init99) {
-			F((init99->type == STMT_VARDECL), tree_free(init99));
+			F((init99->type == STMT_VARDECL), leave_scope(p), tree_free(init99));
 		} else {
 			init = parse_expr(p);
-			F(match(p, ';'), tree_free(init));
+			F(match(p, ';'), leave_scope(p), tree_free(init));
 		}
 		cond = parse_expr(p);
-		F(match(p, ';'), tree_free(init), tree_free(cond));
+		F(match(p, ';'), leave_scope(p), tree_free(init), tree_free(cond));
 		step = parse_expr(p);
-		F(match(p, ')'), tree_free(init), tree_free(cond), tree_free(step));
-		F(body = parse_stmt(p), tree_free(init), tree_free(cond), tree_free(step));
+		F(match(p, ')'), leave_scope(p), tree_free(init), tree_free(cond), tree_free(step));
+		F(body = parse_stmt(p), leave_scope(p), tree_free(init), tree_free(cond), tree_free(step));
+		leave_scope(p);
 		if (init99)
 			return stmtFOR99((StmtVARDECL *) init99, cond, step, body);
 		else
@@ -1374,9 +1474,11 @@ Stmt *parse_stmt(Parser *p)
 		Expr *e;
 		StmtBLOCK *b;
 		F(match(p, '('));
-		F(e = parse_expr(p));
-		F(match(p, ')'), tree_free(e));;
-		F(b = parse_block_stmt(p), tree_free(e));
+		enter_scope(p);
+		F(e = parse_expr(p), leave_scope(p));
+		F(match(p, ')'), leave_scope(p), tree_free(e));;
+		F(b = parse_block_stmt(p), leave_scope(p), tree_free(e));
+		leave_scope(p);
 		return stmtSWITCH(e, b);
 	}
 	case TOK_CASE: {
@@ -1470,9 +1572,12 @@ Expr *parse_expr(Parser *p)
 StmtBLOCK *parse_translation_unit(Parser *p)
 {
 	StmtBLOCK *s = parse_stmts(p);
+	enter_scope(p);
 	if (lexer_peek(p->lexer) != TOK_END) {
 		tree_free(&s->h);
+		leave_scope(p);
 		return NULL;
 	}
+	leave_scope(p);
 	return s;
 }
