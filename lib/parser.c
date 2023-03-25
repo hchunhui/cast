@@ -953,7 +953,7 @@ static struct EnumPair_ parse_enum_pair(Parser *p)
 	return ret;
 }
 
-static StmtBLOCK *parse_stmts(Parser *p);
+static StmtBLOCK *parse_decls(Parser *p, bool in_struct);
 static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 {
 	unsigned int tflags = 0;
@@ -1055,7 +1055,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			}
 			if (match(p, '{')) {
 				enter_scope(p);
-				decls = parse_stmts(p);
+				decls = parse_decls(p, true);
 				leave_scope(p);
 				F_(match(p, '}'), false, tree_free(&decls->h));
 			}
@@ -1203,6 +1203,18 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 	return block;
 }
 
+static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct);
+static StmtBLOCK *parse_decls(Parser *p, bool in_struct)
+{
+	StmtBLOCK *block = stmtBLOCK();
+	while (P != '}' && P != TOK_END) {
+		Stmt *s;
+		F(parse_decl_(p, &s, in_struct), tree_free(&block->h));
+		stmtBLOCK_append(block, s);
+	}
+	return block;
+}
+
 static bool match_initialzer_item(Parser *p, ExprINIT *init)
 {
 	Designator *d1 = NULL;
@@ -1293,16 +1305,19 @@ Stmt *make_decl(Parser *p, Declarator d)
 	return decl1;
 }
 
-Stmt *parse_decl0(Parser *p, Declarator d, Type *btype)
+Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 {
 	F(d.type);
 
 	bool is_typedef = d.is_typedef;
 	unsigned int symtype = is_typedef ? SYM_TYPE : SYM_IDENT;
-	if (d.ident)
-		if (!symset(p, d.ident, symtype)) {
-			return NULL;
+	if (d.ident) {
+		if (!in_struct || symtype == SYM_TYPE) {
+			if (!symset(p, d.ident, symtype)) {
+				return NULL;
+			}
 		}
+	}
 
 	if (d.type->type == TYPE_FUN && P == '{') {
 		F(!is_typedef);
@@ -1398,16 +1413,21 @@ static Declarator parse_type1_ident_post(Parser *p, char *id, Type **pbtype)
 	return err;
 }
 
-bool parse_decl(Parser *p, Stmt **pstmt)
+static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct)
 {
 	Type *btype;
 	int old_count = p->next_count;
 	Declarator d = parse_type1(p, &btype);
-	Stmt *res = parse_decl0(p, d, btype);
+	Stmt *res = parse_decl0(p, d, btype, in_struct);
 	int new_count = p->next_count;
 	if (pstmt)
 		*pstmt = res;
 	return old_count != new_count;
+}
+
+bool parse_decl(Parser *p, Stmt **pstmt)
+{
+	return parse_decl_(p, pstmt, false);
 }
 
 Stmt *parse_stmt(Parser *p)
@@ -1559,7 +1579,7 @@ Stmt *parse_stmt(Parser *p)
 				Type *btype;
 				int old_count = p->next_count;
 				Declarator d = parse_type1_ident_post(p, id, &btype);
-				Stmt *decl = parse_decl0(p, d, btype);
+				Stmt *decl = parse_decl0(p, d, btype, false);
 				int new_count = p->next_count;
 				if (old_count != new_count)
 					return decl;
@@ -1599,7 +1619,7 @@ Expr *parse_expr(Parser *p)
 
 StmtBLOCK *parse_translation_unit(Parser *p)
 {
-	StmtBLOCK *s = parse_stmts(p);
+	StmtBLOCK *s = parse_decls(p, false);
 	enter_scope(p);
 	if (lexer_peek(p->lexer) != TOK_END) {
 		tree_free(&s->h);
