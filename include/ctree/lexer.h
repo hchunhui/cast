@@ -97,4 +97,7 @@ unsigned long long lexer_peek_uint(Lexer *l);
 double lexer_peek_float(Lexer *l);
 char lexer_peek_char(Lexer *l);
 
+const char *lexer_report_path(Lexer *l);
+int lexer_report_line(Lexer *l);
+
 #endif /* LEXER_H */

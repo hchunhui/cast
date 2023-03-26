@@ -157,6 +157,9 @@ struct Lexer_ {
 		char char_cst;
 		double float_cst;
 	} u;
+
+	int line;
+	char path[256];
 };
 
 #define P text_stream_peek(l->ts)
@@ -480,11 +483,30 @@ static void skip_spaces(Lexer *l)
 		lex_many_ignore(l, lex_space);
 		if (l->hol) {
 			if (lex_one_ignore(l, lex_sharp)) {
+				lex_many_ignore(l, lex_space);
+				vec_clear(&l->tok);
+				if (lex_many(l, lex_digit)) {
+					vec_push(&l->tok, 0);
+					l->line = atoi(l->tok.data) - 1;
+					lex_many_ignore(l, lex_space);
+					if (lex_one_ignore(l, lex_quote)) {
+						vec_clear(&(l->tok));
+						if (lex_stringbody(l)) {
+							vec_push(&l->tok, 0);
+							strncpy(l->path, l->tok.data, 255);
+						}
+					}
+				}
+				vec_clear(&l->tok);
 				lex_many_ignore(l, lex_not_newline);
+			} else {
+				l->line++;
 			}
 			l->hol = false;
 		}
-		if (lex_many_ignore(l, lex_newline)) {
+		if (lex_one_ignore(l, lex_newline)) {
+			while(lex_one_ignore(l, lex_newline))
+				l->line++;
 			l->hol = true;
 		} else {
 			break;
@@ -763,6 +785,10 @@ static void lexer_init(Lexer *l, TextStream *ts)
 #undef KWS
 
 	lexer_next(l);
+
+	l->line = 1;
+	l->path[255] = 0;
+	strncpy(l->path, "", 255);
 }
 
 static void lexer_free(Lexer *l)
@@ -782,6 +808,16 @@ void lexer_delete(Lexer *l)
 {
 	lexer_free(l);
 	free(l);
+}
+
+const char *lexer_report_path(Lexer *l)
+{
+	return l->path;
+}
+
+int lexer_report_line(Lexer *l)
+{
+	return l->line;
 }
 
 #if 0

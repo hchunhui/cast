@@ -966,8 +966,9 @@ void toplevel_print(StmtBLOCK *s)
 	}
 }
 
-void toplevel_test(const char *file)
+int toplevel_test(const char *file)
 {
+	int ret = 0;
 	TextStream *ts = text_stream_new(file);
 	Lexer *l = lexer_new(ts);
 	Parser *p = parser_new(l);
@@ -976,16 +977,19 @@ void toplevel_test(const char *file)
 	if (translation_unit) {
 		toplevel_print(translation_unit);
 	} else {
-		printf("FAIL\n");
+		fprintf(stderr, "%s:%d: syntax error\n",
+			lexer_report_path(l),
+			lexer_report_line(l));
+		ret = 1;
 	}
 
 	parser_delete(p);
 	lexer_delete(l);
 	text_stream_delete(ts);
+	return ret;
 }
 
 int main(int argc, char *argv[])
 {
-	toplevel_test(argv[1]);
-	return 0;
+	return toplevel_test(argv[1]);
 }
