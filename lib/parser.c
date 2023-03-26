@@ -135,8 +135,7 @@ void parser_delete(Parser *p)
 static int match(Parser *p, int token)
 {
 	if (P == token) {
-		N;
-		return 1;
+		N; return 1;
 	} else {
 		return 0;
 	}
@@ -145,8 +144,7 @@ static int match(Parser *p, int token)
 static char *get_and_next(Parser *p)
 {
 	char *id = strdup(PS);
-	N;
-	return id;
+	N; return id;
 }
 
 static Expr *parse_parentheses_post(Parser *p)
@@ -269,16 +267,14 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 	while (1) {
 		switch (P) {
 		case '[': {
-			N;
-			Expr *i;
+			N; Expr *i;
 			F(i = parse_expr(p));
 			F(match(p, ']'), tree_free(i));
 			e = exprBOP(EXPR_OP_IDX, e, i);
 			break;
 		}
 		case '(': {
-			N;
-			ExprCALL *n = exprCALL(e);
+			N; ExprCALL *n = exprCALL(e);
 			if (!match(p, ')')) {
 				Expr *arg;
 				F(arg = parse_assignment_expr(p), tree_free(&n->h));
@@ -293,8 +289,7 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 			break;
 		}
 		case '.': {
-			N;
-			if (P == TOK_IDENT) {
+			N; if (P == TOK_IDENT) {
 				e = exprMEM(e, get_and_next(p));
 			} else {
 				return NULL;
@@ -302,8 +297,7 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 			break;
 		}
 		case TOK_PMEM: { // -
-			N;
-			if (P == TOK_IDENT) {
+			N; if (P == TOK_IDENT) {
 				e = exprPMEM(e, get_and_next(p));
 			} else {
 				return NULL;
@@ -361,8 +355,7 @@ static Expr *parse_unary_expr(Parser *p)
 	case '*':
 		N; return applyUOP(EXPR_OP_DEREF, parse_cast_expr(p));
 	case TOK_SIZEOF:
-		N;
-		if (match(p, '(')) {
+		N; if (match(p, '(')) {
 			Type *t = parse_type(p);
 			if (t) {
 				F(match(p, ')'), tree_free(t));
@@ -979,14 +972,11 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		switch (P) {
 		// storage-class-specifier
 		case TOK_TYPEDEF:
-			pd->is_typedef = true;
-			N; break;
+			N; pd->is_typedef = true; break;
 		case TOK_EXTERN:
-			pd->flags |= DFLAG_EXTERN;
-			N; break;
+			N; pd->flags |= DFLAG_EXTERN; break;
 		case TOK_STATIC:
-			pd->flags |= DFLAG_STATIC;
-			N; break;
+			N; pd->flags |= DFLAG_STATIC; break;
 		case TOK_AUTO: // ignore
 		case TOK_REGISTER: // ignore
 			N; break;
@@ -994,43 +984,31 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		case TOK_CONST:
 		case TOK_VOLATILE:
 		case TOK_RESTRICT:
-			tflags |= parse_type_qualifier(p);
-			break;
+			tflags |= parse_type_qualifier(p); break;
 		// function-specifier
 		case TOK_INLINE:
-			pd->flags |= DFLAG_INLINE;
-			N; break;
+			N; pd->flags |= DFLAG_INLINE; break;
 		// type-specifier
 		case TOK_SIGNED:
-			N; is_signed = 1;
-			break;
+			N; is_signed = 1; break;
 		case TOK_UNSIGNED:
-			N; is_unsigned = 1;
-			break;
+			N; is_unsigned = 1; break;
 		case TOK_VOID:
-			N; is_void = 1;
-			break;
+			N; is_void = 1; break;
 		case TOK_INT:
-			N; is_int = 1;
-			break;
+			N; is_int = 1; break;
 		case TOK_LONG:
-			N; long_count++;
-			break;
+			N; long_count++; break;
 		case TOK_SHORT:
-			N; is_short = 1;
-			break;
+			N; is_short = 1; break;
 		case TOK_CHAR:
-			N; is_char = 1;
-			break;
+			N; is_char = 1; break;
 		case TOK_BOOL:
-			N; is_bool = 1;
-			break;
+			N; is_bool = 1; break;
 		case TOK_FLOAT:
-			N; is_float = 1;
-			break;
+			N; is_float = 1; break;
 		case TOK_DOUBLE:
-			N; is_double = 1;
-			break;
+			N; is_double = 1; break;
 		case TOK_IDENT: {
 			int sv = symlookup(p, PS);
 			if (sv == SYM_TYPE) {
@@ -1050,8 +1028,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		case TOK_UNION:
 		{
 			bool is_union = P == TOK_UNION;
-			N;
-			F_(pd->type == NULL, false);
+			N; F_(pd->type == NULL, false);
 			char *tag = NULL;
 			StmtBLOCK *decls = NULL;
 			if (P == TOK_IDENT) {
@@ -1069,8 +1046,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		}
 		case TOK_ENUM:
 		{
-			N;
-			F_(pd->type == NULL, false);
+			N; F_(pd->type == NULL, false);
 			char *tag = NULL;
 			StmtBLOCK *decls = NULL;
 			if (P == TOK_IDENT) {
@@ -1124,13 +1100,11 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 	} else {
 		if (tcount == 0 || is_int) {
 			if (is_short) {
-				if (long_count == 0) {
+				if (long_count == 0)
 					pd->type = is_unsigned ? typeUSHORT(tflags) : typeSHORT(tflags);
-				}
 			} else if (long_count == 0) {
-				if (tcount || scount) {
+				if (tcount || scount)
 					pd->type = is_unsigned ? typeUINT(tflags) : typeINT(tflags);
-				}
 			} else if (long_count == 1) {
 				pd->type = is_unsigned ? typeULONG(tflags) : typeLONG(tflags);
 			} else if (long_count == 2) {
@@ -1152,9 +1126,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 						pd->type = typeVOID(tflags);
 				}
 			} else {
-				if (is_double && long_count == 1 && !is_short) {
+				if (is_double && long_count == 1 && !is_short)
 					pd->type = typeLDOUBLE(tflags);
-				}
 			}
 		}
 	}
@@ -1417,8 +1390,7 @@ Stmt *parse_stmt(Parser *p)
 {
 	switch (P) {
 	case TOK_IF: {
-		N;
-		Expr *e;
+		N; Expr *e;
 		Stmt *s1, *s2;
 		F(match(p, '('));
 		enter_scope(p);
@@ -1437,8 +1409,7 @@ Stmt *parse_stmt(Parser *p)
 		return stmtIF(e, s1, NULL);
 	}
 	case TOK_WHILE: {
-		N;
-		Expr *e;
+		N; Expr *e;
 		Stmt *s;
 		F(match(p, '('));
 		enter_scope(p);
@@ -1449,8 +1420,7 @@ Stmt *parse_stmt(Parser *p)
 		return stmtWHILE(e, s);
 	}
 	case TOK_DO: {
-		N;
-		Expr *e;
+		N; Expr *e;
 		Stmt *s;
 		enter_scope(p);
 		F(s = parse_stmt(p), leave_scope(p));
@@ -1465,8 +1435,7 @@ Stmt *parse_stmt(Parser *p)
 		return stmtDO(e, s);
 	}
 	case TOK_FOR: {
-		N;
-		Expr *init, *cond, *step;
+		N; Expr *init, *cond, *step;
 		Stmt *init99, *body;
 		F(match(p, '('));
 		enter_scope(p);
@@ -1489,18 +1458,15 @@ Stmt *parse_stmt(Parser *p)
 			return stmtFOR(init, cond, step, body);
 	}
 	case TOK_BREAK: {
-		N;
-		F(match(p, ';'));
+		N; F(match(p, ';'));
 		return stmtBREAK();
 	}
 	case TOK_CONTINUE: {
-		N;
-		F(match(p, ';'));
+		N; F(match(p, ';'));
 		return stmtCONTINUE();
 	}
 	case TOK_SWITCH: {
-		N;
-		Expr *e;
+		N; Expr *e;
 		Stmt *b;
 		F(match(p, '('));
 		enter_scope(p);
@@ -1511,8 +1477,7 @@ Stmt *parse_stmt(Parser *p)
 		return stmtSWITCH(e, b);
 	}
 	case TOK_CASE: {
-		N;
-		Expr *e;
+		N; Expr *e;
 		F(e = parse_expr(p));
 		Stmt *s;
 		F(match(p, ':'), tree_free(e));
@@ -1520,15 +1485,13 @@ Stmt *parse_stmt(Parser *p)
 		return stmtCASE(e, s);
 	}
 	case TOK_DEFAULT: {
-		N;
-		Stmt *s;
+		N; Stmt *s;
 		F(match(p, ':'));
 		F(s = parse_stmt(p));
 		return stmtDEFAULT(s);
 	}
 	case TOK_RETURN: {
-		N;
-		if (P == ';') {
+		N; if (P == ';') {
 			N; return stmtRETURN(NULL);
 		}
 		Expr *e;
@@ -1537,8 +1500,7 @@ Stmt *parse_stmt(Parser *p)
 		return stmtRETURN(e);
 	}
 	case TOK_GOTO: {
-		N;
-		F(P == TOK_IDENT);
+		N; F(P == TOK_IDENT);
 		char *id = get_and_next(p);
 		F(match(p, ';'), free(id));
 		return stmtGOTO(id);
