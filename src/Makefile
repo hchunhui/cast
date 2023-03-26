@@ -1,6 +1,6 @@
 TOPDIR = ..
 PROG = test
-CSRCS = main.c
+CSRCS = main.c printer.c
 OBJS += ${TOPDIR}/lib/libctree.a
 
 CFLAGS = -I ${TOPDIR} -I ${TOPDIR}/include -g -O2
