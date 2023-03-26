@@ -147,6 +147,24 @@ static char *get_and_next(Parser *p)
 	N; return id;
 }
 
+static Expr *parse_primary_expr(Parser *p);        // 1
+static Expr *parse_postfix_expr(Parser *p);        // 2
+static Expr *parse_unary_expr(Parser *p);          // 3
+static Expr *parse_cast_expr(Parser *p);           // 4
+static Expr *parse_multiplicative_expr(Parser *p); // 5
+static Expr *parse_additive_expr(Parser *p);       // 6
+static Expr *parse_shift_expr(Parser *p);          // 7
+static Expr *parse_relational_expr(Parser *p);     // 8
+static Expr *parse_equality_expr(Parser *p);       // 9
+static Expr *parse_band_expr(Parser *p);           // 10
+static Expr *parse_bxor_expr(Parser *p);           // 11
+static Expr *parse_bor_expr(Parser *p);            // 12
+static Expr *parse_and_expr(Parser *p);            // 13
+static Expr *parse_or_expr(Parser *p);             // 14
+static Expr *parse_conditional_expr(Parser *p);    // 15
+static Expr *parse_assignment_expr(Parser *p);     // 16
+static Expr *parse_initializer(Parser *p);
+
 static Expr *parse_parentheses_post(Parser *p)
 {
 	Expr *e;
@@ -155,8 +173,6 @@ static Expr *parse_parentheses_post(Parser *p)
 	return exprEXPR(e);
 }
 
-static Expr *parse_assignment_expr(Parser *p);
-Type *parse_type(Parser *p);
 static Expr *parse_ident_or_builtin(Parser *p, char *id)
 {
 	if (strcmp(id, "__builtin_va_start") == 0) {
@@ -256,7 +272,6 @@ static Expr *parse_primary_expr(Parser *p)
 	}
 }
 
-static Expr *parse_assignment_expr(Parser *p);
 static Expr *parse_assignment_expr_post(Parser *p, Expr *e, int prec);
 static Expr *parse_multiplicative_expr_post(Parser *p, Expr *e, int prec);
 static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
@@ -329,8 +344,6 @@ static Expr *applyUOP(ExprUnOp op, Expr *e)
 	return NULL;
 }
 
-static Expr *parse_initializer(Parser *p);
-static Expr *parse_cast_expr(Parser *p);
 static Expr *parse_unary_expr(Parser *p)
 {
 	Expr *e = parse_primary_expr(p);
@@ -413,24 +426,6 @@ static Expr *applyBOP(ExprBinOp op, Expr *a, Expr *b)
 		return NULL;
 	}
 }
-
-static Expr *parse_primary_expr(Parser *p);        // 1
-static Expr *parse_postfix_expr(Parser *p);        // 2
-static Expr *parse_unary_expr(Parser *p);          // 3
-static Expr *parse_cast_expr(Parser *p);           // 4
-
-static Expr *parse_multiplicative_expr(Parser *p); // 5
-static Expr *parse_additive_expr(Parser *p);       // 6
-static Expr *parse_shift_expr(Parser *p);          // 7
-static Expr *parse_relational_expr(Parser *p);     // 8
-static Expr *parse_equality_expr(Parser *p);       // 9
-static Expr *parse_band_expr(Parser *p);           // 10
-static Expr *parse_bxor_expr(Parser *p);           // 11
-static Expr *parse_bor_expr(Parser *p);            // 12
-static Expr *parse_and_expr(Parser *p);            // 13
-static Expr *parse_or_expr(Parser *p);             // 14
-static Expr *parse_conditional_expr(Parser *p);    // 15
-static Expr *parse_assignment_expr(Parser *p);     // 16
 
 static Expr *parse_expr_post(Parser *p, Expr *e, int prec)
 {
