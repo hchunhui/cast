@@ -823,7 +823,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 		F(d->ident == NULL);
 		d->ident = get_and_next(p);
 	} else if (match(p, '(')) {
-		if (P == '*' || P == '(' ||
+		if (P == '*' || P == '(' || P == '[' ||
 		    (P == TOK_IDENT &&
 		     (d->is_typedef || symlookup(p, PS) != SYM_TYPE))) {
 			F(parse_declarator0(p, d));
