@@ -18,6 +18,11 @@ void typeFUN_append(TypeFUN *fun, Type *arg)
 	(void) vec_push(&fun->at, arg);
 }
 
+void typeFUN_prepend(TypeFUN *fun, Type *arg)
+{
+	(void) vec_insert(&fun->at, 0, arg);
+}
+
 ExprCALL *exprCALL(Expr *func)
 {
 	ExprCALL *t = __new(ExprCALL);
@@ -30,6 +35,11 @@ ExprCALL *exprCALL(Expr *func)
 void exprCALL_append(ExprCALL *call, Expr *arg)
 {
 	(void) vec_push(&call->args, arg);
+}
+
+void exprCALL_prepend(ExprCALL *call, Expr *arg)
+{
+	(void) vec_insert(&call->args, 0, arg);
 }
 
 ExprINIT *exprINIT()
@@ -57,6 +67,11 @@ StmtBLOCK *stmtBLOCK()
 void stmtBLOCK_append(StmtBLOCK *block, Stmt *i)
 {
 	(void) vec_push(&block->items, i);
+}
+
+void stmtBLOCK_prepend(StmtBLOCK *block, Stmt *i)
+{
+	(void) vec_insert(&block->items, 0, i);
 }
 
 StmtDECLS *stmtDECLS()

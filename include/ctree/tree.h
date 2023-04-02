@@ -118,6 +118,7 @@ typedef struct TypeFUN_ {
 
 TypeFUN *typeFUN(Type *rt);
 void typeFUN_append(TypeFUN *fun, Type *arg);
+void typeFUN_prepend(TypeFUN *fun, Type *arg);
 
 typedef vec_t(Expr*) vec_expr_t;
 
@@ -129,6 +130,7 @@ typedef struct ExprCALL_ {
 
 ExprCALL *exprCALL(Expr *func);
 void exprCALL_append(ExprCALL *call, Expr *arg);
+void exprCALL_prepend(ExprCALL *call, Expr *arg);
 
 typedef struct Designator_ {
 	enum {
@@ -162,6 +164,7 @@ typedef struct StmtBLOCK_ {
 
 StmtBLOCK *stmtBLOCK();
 void stmtBLOCK_append(StmtBLOCK *block, Stmt *i);
+void stmtBLOCK_prepend(StmtBLOCK *block, Stmt *i);
 
 typedef struct StmtDECLS_ {
 	Stmt h;
