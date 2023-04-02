@@ -1171,7 +1171,7 @@ static StmtBLOCK *parse_decls(Parser *p, bool in_struct)
 	StmtBLOCK *block = stmtBLOCK();
 	while (P != '}' && P != TOK_END) {
 		Stmt *s;
-		F(parse_decl_(p, &s, in_struct), tree_free(&block->h));
+		F(parse_decl_(p, &s, in_struct) && s, tree_free(&block->h));
 		stmtBLOCK_append(block, s);
 	}
 	return block;
