@@ -1,7 +1,7 @@
 TOPDIR = ..
 PROG = test
 CSRCS = main.c printer.c
-OBJS += ${TOPDIR}/lib/libctree.a
+OBJS += ${TOPDIR}/lib/libcast.a
 
 CFLAGS = -I ${TOPDIR} -I ${TOPDIR}/include -g -O2
 LDFLAGS = -ldl -lpthread

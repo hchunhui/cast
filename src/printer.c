@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
-#include <ctree/parser.h>
+#include <cast/parser.h>
 
 static void decl_flags_print(unsigned int flags)
 {

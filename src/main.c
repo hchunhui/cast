@@ -1,10 +1,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <assert.h>
-#include <ctree/allocator.h>
-#include <ctree/lexer.h>
-#include <ctree/parser.h>
-#include <ctree/map.h>
+#include <cast/allocator.h>
+#include <cast/lexer.h>
+#include <cast/parser.h>
+#include <cast/map.h>
 
 typedef struct {
 	map_int_t managed_symbols;

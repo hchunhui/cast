@@ -1,8 +1,8 @@
 TOPDIR = ..
-LIB = libctree.a
+LIB = libcast.a
 CSRCS = vec.c map.c parser.c lexer.c tree.c allocator.c
 
-CFLAGS = -I${TOPDIR}/include/ctree -g -O2
+CFLAGS = -I${TOPDIR}/include/cast -g -O2
 LDFLAGS =
 
 include ${TOPDIR}/make/comm.mk
