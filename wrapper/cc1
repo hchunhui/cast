@@ -1,0 +1,55 @@
+#!/usr/bin/python
+import os
+import sys
+import subprocess as sp
+
+def find_output(argv):
+    flag = False
+    for i in argv:
+        if flag:
+            return i
+        if i == "-o":
+            flag = True
+    return None
+
+def find_preproc(argv):
+    for i in argv:
+        if i == '-E':
+            return True
+    return False
+
+def filter_argv(argv):
+    o = []
+    for i in argv:
+        if not i.startswith('--cast'):
+            o.append(i)
+    return o
+
+if_preproc = find_preproc(sys.argv)
+
+pppath = os.path.dirname(sys.argv[0]) + '/cast-pp'
+cc1path = sp.check_output(['gcc', '-print-prog-name=cc1']).strip()
+
+arg = [cc1path] + filter_argv(sys.argv[1:])
+if if_preproc:
+    arg += ['-U', '__GNUC__', '-D', '__CAST_MANAGED__']
+
+ret = sp.call(arg)
+if ret != 0:
+    exit(ret)
+
+if if_preproc:
+    output = find_output(sys.argv)
+    if output is None:
+        exit(ret)
+    print("cast: processing {}".format(output), file=sys.stderr)
+    try:
+        out = sp.check_output([pppath, output])
+    except:
+        out = b""
+        ret = 1
+    if '--cast-print' in (sys.argv):
+        print(out.decode())
+    with open(output, 'wb') as f:
+        f.write(out)
+exit(ret)

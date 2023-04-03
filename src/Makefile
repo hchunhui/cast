@@ -1,5 +1,5 @@
 TOPDIR = ..
-PROG = test
+PROG = cast-pp
 CSRCS = main.c printer.c
 OBJS += ${TOPDIR}/lib/libcast.a
 

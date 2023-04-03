@@ -340,13 +340,13 @@ int toplevel_test(const char *file)
 
 	Allocator *a = allocator_new();
 	Context *ctx = context_new(a);
-#if 0
+#ifdef __CAST_MANAGED__
 	StmtBLOCK *translation_unit = __managed_parse_translation_unit(ctx, p);
 #else
 	StmtBLOCK *translation_unit = parse_translation_unit(p);
 #endif
 	if (translation_unit) {
-#if 0
+#ifdef __CAST_MANAGED__
 		__managed_patch(ctx, translation_unit);
 #else
 		patch(translation_unit);
@@ -369,5 +369,5 @@ int toplevel_test(const char *file)
 
 int main(int argc, char *argv[])
 {
-	return toplevel_test(argv[1]);
+	return toplevel_test(argc == 1 ? "-" : argv[1]);
 }

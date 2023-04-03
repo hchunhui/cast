@@ -1,7 +1,7 @@
 #ifndef ALLOCATOR_H
 #define ALLOCATOR_H
 
-#if 0
+#ifdef __CAST_MANAGED__
 #define BEGIN_MANAGED __managed {
 #define END_MANAGED }
 #else
