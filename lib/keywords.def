@@ -35,3 +35,5 @@ KWS("const", TOK_CONST);
 KWS("float", TOK_FLOAT);
 KWS("double", TOK_DOUBLE);
 KWS("_Bool", TOK_BOOL);
+
+KWS("__managed", TOK_MANAGED);

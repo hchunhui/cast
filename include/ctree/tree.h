@@ -5,6 +5,7 @@
 #define DFLAG_EXTERN 1
 #define DFLAG_STATIC 2
 #define DFLAG_INLINE 4
+#define DFLAG_MANAGED 8
 
 #define TFLAG_CONST 1
 #define TFLAG_VOLATILE 2
@@ -106,31 +107,36 @@ typedef enum {
 	EXPR_OP_ASSIGNBSHR,
 } ExprBinOp;
 
-#include "vec.h"
-typedef vec_t(Type*) vec_type_t;
+#include "allocator.h"
+#include "avec.h"
+typedef avec_t(Type*) avec_type_t;
 
 typedef struct TypeFUN_ {
 	Type h;
 	Type *rt;
-	vec_type_t at;
+	avec_type_t at;
 	bool va_arg;
 } TypeFUN;
 
+BEGIN_MANAGED
 TypeFUN *typeFUN(Type *rt);
 void typeFUN_append(TypeFUN *fun, Type *arg);
 void typeFUN_prepend(TypeFUN *fun, Type *arg);
+END_MANAGED
 
-typedef vec_t(Expr*) vec_expr_t;
+typedef avec_t(Expr*) avec_expr_t;
 
 typedef struct ExprCALL_ {
 	Expr h;
 	Expr *func;
-	vec_expr_t args;
+	avec_expr_t args;
 } ExprCALL;
 
+BEGIN_MANAGED
 ExprCALL *exprCALL(Expr *func);
 void exprCALL_append(ExprCALL *call, Expr *arg);
 void exprCALL_prepend(ExprCALL *call, Expr *arg);
+END_MANAGED
 
 typedef struct Designator_ {
 	enum {
@@ -145,43 +151,50 @@ typedef struct ExprINITItem_ {
 	Designator *designator;
 	Expr *value;
 } ExprINITItem;
-typedef vec_t(ExprINITItem) vec_inititem_t;
+typedef avec_t(ExprINITItem) avec_inititem_t;
 
 typedef struct ExprINIT_ {
 	Expr h;
-	vec_inititem_t items;
+	avec_inititem_t items;
 } ExprINIT;
 
+BEGIN_MANAGED
 ExprINIT *exprINIT();
 void exprINIT_append(ExprINIT *init, Designator *d, Expr *e);
+END_MANAGED
 
-typedef vec_t(Stmt*) vec_stmt_t;
+typedef avec_t(Stmt*) avec_stmt_t;
 
 typedef struct StmtBLOCK_ {
 	Stmt h;
-	vec_stmt_t items;
+	avec_stmt_t items;
 } StmtBLOCK;
 
+BEGIN_MANAGED
 StmtBLOCK *stmtBLOCK();
 void stmtBLOCK_append(StmtBLOCK *block, Stmt *i);
 void stmtBLOCK_prepend(StmtBLOCK *block, Stmt *i);
+END_MANAGED
 
 typedef struct StmtDECLS_ {
 	Stmt h;
-	vec_stmt_t items;
+	avec_stmt_t items;
 } StmtDECLS;
+
+BEGIN_MANAGED
 StmtDECLS *stmtDECLS();
 void stmtDECLS_append(StmtDECLS *decls, Stmt *i);
+END_MANAGED
 
 
 struct EnumPair_ {
 	const char *id;
 	Expr *val;
 };
-typedef vec_t(struct EnumPair_) vec_epair_t;
+typedef avec_t(struct EnumPair_) avec_epair_t;
 
 struct EnumList_ {
-	vec_epair_t items;
+	avec_epair_t items;
 };
 
 #define STMT(id, ...) typedef struct Stmt##id##_ Stmt##id;
@@ -200,14 +213,18 @@ struct EnumList_ {
 	struct TYPENAME##id##_ { \
 		Tree h; \
 	}; \
-	TYPENAME *FUNCNAME##id();
+	BEGIN_MANAGED \
+	TYPENAME *FUNCNAME##id(); \
+	END_MANAGED
 
 #define GEN_2(TYPENAME, FUNCNAME, id, T1, v1)	\
 	struct TYPENAME##id##_ { \
 		Tree h; \
 		T1 v1;  \
 	}; \
-	TYPENAME *FUNCNAME##id(T1 v1);
+	BEGIN_MANAGED \
+	TYPENAME *FUNCNAME##id(T1 v1); \
+	END_MANAGED
 
 #define GEN_4(TYPENAME, FUNCNAME, id, T1, v1, T2, v2)	\
 	struct TYPENAME##id##_ { \
@@ -215,7 +232,9 @@ struct EnumList_ {
 		T1 v1;  \
 		T2 v2;  \
 	}; \
-	TYPENAME *FUNCNAME##id(T1 v1, T2 v2);
+	BEGIN_MANAGED \
+	TYPENAME *FUNCNAME##id(T1 v1, T2 v2); \
+	END_MANAGED
 
 #define GEN_6(TYPENAME, FUNCNAME, id, T1, v1, T2, v2, T3, v3)	\
 	struct TYPENAME##id##_ { \
@@ -224,7 +243,9 @@ struct EnumList_ {
 		T2 v2;  \
 		T3 v3;  \
 	}; \
-	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3);
+	BEGIN_MANAGED \
+	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3); \
+	END_MANAGED
 
 #define GEN_8(TYPENAME, FUNCNAME, id, T1, v1, T2, v2, T3, v3, T4, v4)	\
 	struct TYPENAME##id##_ { \
@@ -234,7 +255,9 @@ struct EnumList_ {
 		T3 v3;  \
 		T4 v4;  \
 	}; \
-	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4);
+	BEGIN_MANAGED \
+	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4); \
+	END_MANAGED
 
 #define GEN_10(TYPENAME, FUNCNAME, id, T1, v1, T2, v2, T3, v3, T4, v4, T5, v5) \
 	struct TYPENAME##id##_ { \
@@ -245,7 +268,9 @@ struct EnumList_ {
 		T4 v4;  \
 		T5 v5;  \
 	}; \
-	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4, T5 v5);
+	BEGIN_MANAGED \
+	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4, T5 v5); \
+	END_MANAGED
 
 #define STMT(id, ...) PASTE(GEN_, ARGCOUNT(__VA_ARGS__))(Stmt, stmt, id, ## __VA_ARGS__)
 #define EXPR(id, ...) PASTE(GEN_, ARGCOUNT(__VA_ARGS__))(Expr, expr, id, ## __VA_ARGS__)
@@ -265,6 +290,5 @@ struct EnumList_ {
 #undef GEN_8
 #undef GEN_10
 
-void tree_free(Tree *);
 
 #endif /* TREE_H */

@@ -84,6 +84,8 @@ enum {
 	TOK_FLOAT,
 	TOK_DOUBLE,
 	TOK_BOOL,
+
+	TOK_MANAGED,
 };
 
 Lexer *lexer_new(TextStream *ts);

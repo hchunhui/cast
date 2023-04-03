@@ -112,3 +112,55 @@ void vec_swap_(char **data, int *length, int *capacity, int memsz,
   }
 }
 
+#include "allocator.h"
+#include "avec.h"
+
+BEGIN_MANAGED
+int avec_expand_(char **data, int *length, int *capacity, int memsz) {
+  if (*length + 1 > *capacity) {
+    void *ptr;
+    int n = (*capacity == 0) ? 4 : *capacity << 1;
+    ptr = __new_(n * memsz);
+    memcpy(ptr, *data, *length * memsz);
+    if (ptr == NULL) return -1;
+    *data = ptr;
+    *capacity = n;
+  }
+  return 0;
+}
+
+
+int avec_reserve_(char **data, int *length, int *capacity, int memsz, int n) {
+  (void) length;
+  if (n > *capacity) {
+    void *ptr = __new_(n * memsz);
+    memcpy(ptr, *data, *length * memsz);
+    if (ptr == NULL) return -1;
+    *data = ptr;
+    *capacity = n;
+  }
+  return 0;
+}
+
+
+int avec_reserve_po2_(
+  char **data, int *length, int *capacity, int memsz, int n
+) {
+  int n2 = 1;
+  if (n == 0) return 0;
+  while (n2 < n) n2 <<= 1;
+  return avec_reserve_(data, length, capacity, memsz, n2);
+}
+
+
+int avec_insert_(char **data, int *length, int *capacity, int memsz,
+                 int idx
+) {
+  int err = avec_expand_(data, length, capacity, memsz);
+  if (err) return err;
+  memmove(*data + (idx + 1) * memsz,
+          *data + idx * memsz,
+          (*length - idx) * memsz);
+  return 0;
+}
+END_MANAGED

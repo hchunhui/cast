@@ -12,6 +12,8 @@ static void decl_flags_print(unsigned int flags)
 		printf("static ");
 	if (flags & DFLAG_INLINE)
 		printf("inline ");
+	if (flags & DFLAG_MANAGED)
+		printf("/* __managed */ ");
 }
 
 static void type_flags_print(Type *t)
@@ -175,7 +177,7 @@ static void type_print_annot(Type *type, bool simple)
 		printf("(");
 		Type *p;
 		int i;
-		vec_foreach(&((TypeFUN *) type)->at, p, i) {
+		avec_foreach(&((TypeFUN *) type)->at, p, i) {
 			if (i) printf(", ");
 			type_print_annot(p, simple);
 		}
@@ -212,7 +214,7 @@ static void type_print_annot(Type *type, bool simple)
 				printf(" {");
 				struct EnumPair_ *p;
 				int i;
-				vec_foreach_ptr(&(t->list->items), p, i) {
+				avec_foreach_ptr(&(t->list->items), p, i) {
 					printf("%s", p->id);
 					if (p->val) {
 						printf(" = ");
@@ -328,7 +330,7 @@ static void type_print_declarator2(Type *type)
 		printf("(");
 		Type *p;
 		int i;
-		vec_foreach(&((TypeFUN *) type)->at, p, i) {
+		avec_foreach(&((TypeFUN *) type)->at, p, i) {
 			if (i) printf(", ");
 			type_print_annot(type_get_basic(p), false);
 			printf(" ");
@@ -385,7 +387,7 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 	if (args) {
 		Stmt *p;
 		int i;
-		vec_foreach(&args->items, p, i) {
+		avec_foreach(&args->items, p, i) {
 			if (i)
 				printf(", ");
 			type_print_vardecl(
@@ -587,7 +589,7 @@ static void expr_print(Expr *h)
 		printf("(");
 		Expr *p;
 		int i;
-		vec_foreach(&e->args, p, i) {
+		avec_foreach(&e->args, p, i) {
 			if (i) printf(", ");
 			expr_print2(p);
 		}
@@ -670,7 +672,7 @@ static void expr_print(Expr *h)
 		printf("{");
 		ExprINITItem p;
 		int i;
-		vec_foreach(&e->items, p, i) {
+		avec_foreach(&e->items, p, i) {
 			if (i) printf(", ");
 			if (p.designator) {
 				Designator *d = p.designator;
@@ -881,7 +883,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("{\n");
 		Stmt *p;
 		int i;
-		vec_foreach(&s->items, p, i) {
+		avec_foreach(&s->items, p, i) {
 			stmt_print(p, level + 1);
 		}
 		print_level(level);
@@ -946,7 +948,7 @@ static void stmt_print(Stmt *h, int level)
 		StmtDECLS *s = (StmtDECLS *) h;
 		Stmt *p;
 		int i;
-		vec_foreach(&s->items, p, i) {
+		avec_foreach(&s->items, p, i) {
 			stmt_print(p, level);
 		}
 		break;
@@ -960,7 +962,7 @@ void toplevel_print(StmtBLOCK *s)
 {
 	Stmt *p;
 	int i;
-	vec_foreach(&s->items, p, i) {
+	avec_foreach(&s->items, p, i) {
 		stmt_print(p, 0);
 	}
 }
