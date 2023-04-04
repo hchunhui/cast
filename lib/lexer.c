@@ -160,6 +160,7 @@ struct Lexer_ {
 
 	int line;
 	char path[256];
+	vec_char_t tok_temp;
 };
 
 #define P text_stream_peek(l->ts)
@@ -348,7 +349,7 @@ static unsigned int lex_escape(Lexer *l)
 	return 256;
 }
 
-static bool lex_stringbody(Lexer *l)
+static bool lex_stringbody(Lexer *l, vec_char_t *dst)
 {
 	char c;
 	unsigned int d;
@@ -358,11 +359,11 @@ static bool lex_stringbody(Lexer *l)
 		case '\\':
 			d = lex_escape(l);
 			if (d != 256)
-				vec_push(&l->tok, d);
+				vec_push(dst, d);
 			else
 				return false;
 			break;
-		default: N; vec_push(&l->tok, c);; break;
+		default: N; vec_push(dst, c);; break;
 		}
 	}
 	return false;
@@ -433,49 +434,35 @@ LEX(lL, c == 'l' || c == 'L')
 
 typedef char (*lex_func_t)(Lexer *);
 
-static bool lex_one(Lexer *l, lex_func_t lex)
-{
-	char c = lex(l);
-
-	if (c) {
-		vec_push(&l->tok, c);
-		return true;
-	} else {
-		return false;
-	}
+#define LEX1(name, action) \
+static bool lex_##name(Lexer *l, lex_func_t lex) \
+{ \
+	char c = lex(l); \
+	if (c) { \
+		action; \
+		return true; \
+	} else { \
+		return false; \
+	} \
 }
+LEX1(one, vec_push(&l->tok, c))
+LEX1(one_temp, vec_push(&l->tok_temp, c))
+LEX1(one_ignore,)
 
-static bool lex_one_ignore(Lexer *l, lex_func_t lex)
-{
-	char c = lex(l);
-	if (c) {
-		return true;
-	} else {
-		return false;
-	}
+#define LEXM(name, one) \
+static bool lex_##name(Lexer *l, lex_func_t lex) \
+{ \
+	bool res = lex_##one(l, lex); \
+	if (res) { \
+		while (lex_##one(l, lex)) {} \
+		return true; \
+	} else { \
+		return false; \
+	} \
 }
-
-static bool lex_many(Lexer *l, lex_func_t lex)
-{
-	bool res = lex_one(l, lex);
-	if (res) {
-		while (lex_one(l, lex)) {}
-		return true;
-	} else {
-		return false;
-	}
-}
-
-static bool lex_many_ignore(Lexer *l, lex_func_t lex)
-{
-	bool res = lex_one_ignore(l, lex);
-	if (res) {
-		while (lex_one_ignore(l, lex)) {}
-		return true;
-	} else {
-		return false;
-	}
-}
+LEXM(many, one)
+LEXM(many_temp, one_temp)
+LEXM(many_ignore, one_ignore)
 
 static void skip_spaces(Lexer *l)
 {
@@ -484,20 +471,19 @@ static void skip_spaces(Lexer *l)
 		if (l->hol) {
 			if (lex_one_ignore(l, lex_sharp)) {
 				lex_many_ignore(l, lex_space);
-				vec_clear(&l->tok);
-				if (lex_many(l, lex_digit)) {
-					vec_push(&l->tok, 0);
-					l->line = atoi(l->tok.data) - 1;
+				vec_clear(&l->tok_temp);
+				if (lex_many_temp(l, lex_digit)) {
+					vec_push(&l->tok_temp, 0);
+					l->line = atoi(l->tok_temp.data) - 1;
 					lex_many_ignore(l, lex_space);
 					if (lex_one_ignore(l, lex_quote)) {
-						vec_clear(&(l->tok));
-						if (lex_stringbody(l)) {
-							vec_push(&l->tok, 0);
-							strncpy(l->path, l->tok.data, 255);
+						vec_clear(&(l->tok_temp));
+						if (lex_stringbody(l, &l->tok_temp)) {
+							vec_push(&l->tok_temp, 0);
+							strncpy(l->path, l->tok_temp.data, 255);
 						}
 					}
 				}
-				vec_clear(&l->tok);
 				lex_many_ignore(l, lex_not_newline);
 			} else {
 				l->line++;
@@ -717,7 +703,7 @@ void lexer_next(Lexer *l)
 		if (lex_one_ignore(l, lex_quote)) {
 			vec_clear(&l->tok);
 			do {
-				if (!lex_stringbody(l) ||
+				if (!lex_stringbody(l, &l->tok) ||
 				    !lex_one_ignore(l, lex_quote)) {
 					l->tok_type = TOK_ERROR;
 					return;
@@ -789,12 +775,14 @@ static void lexer_init(Lexer *l, TextStream *ts)
 	l->line = 1;
 	l->path[255] = 0;
 	strncpy(l->path, "", 255);
+	vec_init(&l->tok_temp);
 }
 
 static void lexer_free(Lexer *l)
 {
 	vec_deinit(&l->tok);
 	map_deinit(&l->kws);
+	vec_deinit(&l->tok_temp);
 }
 
 Lexer *lexer_new(TextStream *ts)
