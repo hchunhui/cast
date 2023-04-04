@@ -84,6 +84,7 @@ enum {
 	TOK_FLOAT,
 	TOK_DOUBLE,
 	TOK_BOOL,
+	TOK_INT128,
 
 	TOK_MANAGED,
 };

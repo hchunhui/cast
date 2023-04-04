@@ -977,6 +977,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 	int is_float = 0;
 	int is_double = 0;
 	int is_void = 0;
+	int is_int128 = 0;
 
 	bool flag = true;
 	while (flag) {
@@ -1020,10 +1021,13 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			N; is_float = 1; break;
 		case TOK_DOUBLE:
 			N; is_double = 1; break;
+		case TOK_INT128:
+			N; is_int128 = 1; break;
 		case TOK_IDENT: {
 			int sv = symlookup(p, PS);
 			if (sv == SYM_TYPE) {
 				int xcount = is_int + is_bool + is_char + is_float + is_double + is_void +
+					is_int128 +
 					is_signed + is_unsigned + is_short + long_count;
 				if (pd->type == NULL && xcount == 0) {
 					const char *name = get_and_next(p);
@@ -1093,14 +1097,14 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		}
 	}
 
-	int tcount = is_int + is_bool + is_char + is_float + is_double + is_void;
+	int tcount = is_int + is_bool + is_char + is_float + is_double + is_void + is_int128;
 	int scount = is_signed + is_unsigned;
 	if (pd->type) {
 		if (tcount + scount + is_short + long_count) {
 			pd->type = NULL;
 		}
 	} else {
-		if (tcount == 0 || is_int) {
+		if (tcount == 0 || tcount == 1 && is_int) {
 			if (is_short) {
 				if (long_count == 0)
 					pd->type = is_unsigned ? typeUSHORT(tflags) : typeSHORT(tflags);
@@ -1112,11 +1116,12 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			} else if (long_count == 2) {
 				pd->type = is_unsigned ? typeULLONG(tflags) : typeLLONG(tflags);
 			}
-		} else {
+		} else if (tcount == 1) {
 			if (is_short + long_count == 0) {
 				if (is_char) {
-					if (is_char)
-						pd->type = is_unsigned ? typeUCHAR(tflags) : typeCHAR(tflags);
+					pd->type = is_unsigned ? typeUCHAR(tflags) : typeCHAR(tflags);
+				} else if (is_int128) {
+					pd->type = is_unsigned ? typeUINT128(tflags) : typeINT128(tflags);
 				} else if (scount == 0) {
 					if (is_bool)
 						pd->type = typeBOOL(tflags);

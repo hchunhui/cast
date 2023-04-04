@@ -41,6 +41,8 @@ static void type_flags_print(Type *t)
 	case TYPE_TYPEDEF: flags = ((TypeTYPEDEF *) t)->flags; break;
 	case TYPE_STRUCT:  flags = ((TypeSTRUCT *) t)->flags; break;
 	case TYPE_ENUM: flags = ((TypeENUM *) t)->flags; break;
+	case TYPE_INT128: flags = ((TypeINT128 *) t)->flags; break;
+	case TYPE_UINT128: flags = ((TypeUINT128 *) t)->flags; break;
 	default:
 		assert(false);
 		break;
@@ -157,6 +159,12 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_UCHAR:
 		printf("unsigned char");
 		break;
+	case TYPE_INT128:
+		printf("__int128");
+		break;
+	case TYPE_UINT128:
+		printf("unsigned __int128");
+		break;
 	case TYPE_PTR:
 		printf("pointer(");
 		type_print_annot(((TypePTR *) type)->t, simple);
@@ -253,6 +261,8 @@ static Type* type_get_basic(Type *type)
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
 	case TYPE_LDOUBLE:
+	case TYPE_INT128:
+	case TYPE_UINT128:
 	case TYPE_TYPEDEF:
 	case TYPE_STRUCT:
 	case TYPE_ENUM:
@@ -286,6 +296,8 @@ static void type_print_declarator1(Type *type)
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
 	case TYPE_LDOUBLE:
+	case TYPE_INT128:
+	case TYPE_UINT128:
 	case TYPE_TYPEDEF:
 		return;
 	case TYPE_FUN:
@@ -324,6 +336,8 @@ static void type_print_declarator2(Type *type)
 	case TYPE_FLOAT:
 	case TYPE_DOUBLE:
 	case TYPE_LDOUBLE:
+	case TYPE_INT128:
+	case TYPE_UINT128:
 	case TYPE_TYPEDEF:
 		return;
 	case TYPE_FUN:

@@ -37,3 +37,6 @@ KWS("double", TOK_DOUBLE);
 KWS("_Bool", TOK_BOOL);
 
 KWS("__managed", TOK_MANAGED);
+
+// gcc extensions
+KWS("__int128", TOK_INT128);
