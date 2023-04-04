@@ -726,7 +726,7 @@ static void expr_print(Expr *h)
 		printf("__builtin_offsetof( ");
 		type_print_vardecl(0, e->type, "");
 		printf(", ");
-		printf("%s ", e->mem);
+		expr_print2(e->mem);
 		printf(")");
 		break;
 	}

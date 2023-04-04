@@ -217,12 +217,11 @@ static Expr *parse_ident_or_builtin(Parser *p, const char *id)
 		return exprVAEND(ap);
 	} else if (strcmp(id, "__builtin_offsetof") == 0) {
 		Type *type;
-		const char *mem;
+		Expr *mem;
 		F(match(p, '('));
 		F(type = parse_type(p));
 		F(match(p, ','));
-		F(P == TOK_IDENT);
-		mem = get_and_next(p);
+		F(mem = parse_assignment_expr(p));
 		F(match(p, ')'));
 		return exprOFFSETOF(type, mem);
 	}

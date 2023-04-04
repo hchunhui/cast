@@ -52,7 +52,7 @@ EXPR(SIZEOFT,    Type *, t)
 EXPR(VASTART,   Expr *, ap, const char *, last)
 EXPR(VAARG,     Expr *, ap, Type *, type)
 EXPR(VAEND,     Expr *, ap)
-EXPR(OFFSETOF,  Type *, type, const char *, mem)
+EXPR(OFFSETOF,  Type *, type, Expr *, mem)
 
 STMT(EXPR,  Expr *, expr)
 STMT(IF,    Expr *, cond, Stmt *, body1, Stmt *, body2)
