@@ -1,7 +1,7 @@
 TOPDIR = .
 SUBDIRS = lib src
 
-export VARIANT ?= managed
+VARIANT ?= managed
 
 include ${TOPDIR}/make/comm.mk
 include ${TOPDIR}/user.mk
@@ -9,12 +9,15 @@ include ${TOPDIR}/user.mk
 src.all: lib.all
 
 boot:
-	make clean
-	make VARIANT=boot
-	make localinstall
-	make clean
-	make VARIANT=managed
-	make localinstall
+	${MAKE} clean
+	${MAKE} VARIANT=boot
+	${MAKE} localinstall
+	${MAKE} clean
+	${MAKE} VARIANT=managed
+	${MAKE} localinstall
 
 localinstall:
 	cp src/cast-pp wrapper/
+
+export VARIANT :
+.export VARIANT :
