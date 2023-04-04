@@ -888,8 +888,8 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
 				Declarator d1 = parse_type1(p, NULL);
 				free_funscope(&d1);
-				if (d1.type->type == TYPE_VOID &&
-					   d1.ident == NULL && P == ')') {
+				if (d1.type && d1.type->type == TYPE_VOID &&
+				    d1.ident == NULL && P == ')') {
 					N;
 					d1.type = NULL;
 					d->type = &n->h;
