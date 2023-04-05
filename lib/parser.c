@@ -826,6 +826,10 @@ static unsigned int parse_type_qualifier(Parser *p)
 			flags |= TFLAG_RESTRICT;
 			progress = true;
 		}
+		if (match(p, TOK_ATOMIC)) {
+			flags |= TFLAG_ATOMIC;
+			progress = true;
+		}
 	}
 	return flags;
 }
@@ -962,6 +966,37 @@ static struct EnumPair_ parse_enum_pair(Parser *p)
 }
 
 static StmtBLOCK *parse_decls(Parser *p, bool in_struct);
+static void type_set_atomic(Type *t)
+{
+	switch (t->type) {
+	case TYPE_VOID:(((TypeVOID *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_INT: (((TypeINT *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_SHORT: (((TypeSHORT *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_LONG: (((TypeLONG *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_LLONG: (((TypeLLONG *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_UINT: (((TypeUINT *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_USHORT: (((TypeUSHORT *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_ULONG: (((TypeULONG *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_ULLONG: (((TypeULLONG *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_BOOL: (((TypeBOOL *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_FLOAT: (((TypeFLOAT *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_LDOUBLE: (((TypeLDOUBLE *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_DOUBLE: (((TypeDOUBLE *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_CHAR: (((TypeCHAR *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_UCHAR: (((TypeUCHAR *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_PTR: (((TypePTR *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_ARRAY: (((TypeARRAY *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_FUN: break;
+	case TYPE_TYPEDEF: (((TypeTYPEDEF *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_STRUCT:  (((TypeSTRUCT *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_ENUM: (((TypeENUM *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_INT128: (((TypeINT128 *) t)->flags) |= TFLAG_ATOMIC; break;
+	case TYPE_UINT128: (((TypeUINT128 *) t)->flags) |= TFLAG_ATOMIC; break;
+	default:
+		assert(false);
+		break;
+	}
+}
 static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 {
 	unsigned int tflags = 0;
@@ -994,9 +1029,27 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			N; break;
 		// type-qualifier
 		case TOK_CONST:
+			N; tflags |= TFLAG_CONST; break;
 		case TOK_VOLATILE:
+			N; tflags |= TFLAG_VOLATILE; break;
 		case TOK_RESTRICT:
-			tflags |= parse_type_qualifier(p); break;
+			N; tflags |= TFLAG_RESTRICT; break;
+		case TOK_ATOMIC: {
+			N; int xcount = is_int + is_bool + is_char +
+				is_float + is_double + is_void +
+				is_int128 +
+				is_signed + is_unsigned + is_short + long_count;
+			if (pd->type == NULL && xcount == 0 && match(p, '(')) {
+				Type *atype;
+				F(atype = parse_type(p));
+				F(match(p, ')'));
+				type_set_atomic(atype);
+				pd->type = atype;
+			} else {
+				tflags |= TFLAG_ATOMIC;
+			}
+			break;
+		}
 		// function-specifier
 		case TOK_INLINE:
 			N; pd->flags |= DFLAG_INLINE; break;

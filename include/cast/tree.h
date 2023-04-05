@@ -11,6 +11,7 @@
 #define TFLAG_VOLATILE 2
 #define TFLAG_RESTRICT 4
 #define TFLAG_ARRAY_STATIC 8
+#define TFLAG_ATOMIC 16
 
 typedef struct EnumList_ EnumList;
 

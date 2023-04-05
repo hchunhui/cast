@@ -53,6 +53,8 @@ static void type_flags_print(Type *t)
 		printf("restrict ");
 	if (flags & TFLAG_VOLATILE)
 		printf("volatile ");
+	if (flags & TFLAG_ATOMIC)
+		printf("_Atomic ");
 }
 
 static void lp()

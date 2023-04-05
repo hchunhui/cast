@@ -85,6 +85,7 @@ enum {
 	TOK_DOUBLE,
 	TOK_BOOL,
 	TOK_INT128,
+	TOK_ATOMIC,
 
 	TOK_MANAGED,
 };
