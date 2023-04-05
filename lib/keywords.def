@@ -40,3 +40,13 @@ KWS("__managed", TOK_MANAGED);
 
 // gcc extensions
 KWS("__int128", TOK_INT128);
+KWS("__const", TOK_CONST);
+KWS("__const__", TOK_CONST);
+KWS("__volatile", TOK_VOLATILE);
+KWS("__volatile__", TOK_VOLATILE);
+KWS("__signed", TOK_SIGNED);
+KWS("__signed__", TOK_SIGNED);
+KWS("__inline", TOK_INLINE);
+KWS("__inline__", TOK_INLINE);
+KWS("__restrict", TOK_RESTRICT);
+KWS("__restrict__", TOK_RESTRICT);
