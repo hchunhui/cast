@@ -12,6 +12,10 @@ static void decl_flags_print(unsigned int flags)
 		printf("static ");
 	if (flags & DFLAG_INLINE)
 		printf("inline ");
+	if (flags & DFLAG_THREADLOCAL)
+		printf("_Thread_local ");
+	if (flags & DFLAG_NORETURN)
+		printf("_Noreturn ");
 	if (flags & DFLAG_MANAGED)
 		printf("/* __managed */ ");
 }

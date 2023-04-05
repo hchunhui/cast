@@ -5,7 +5,9 @@
 #define DFLAG_EXTERN 1
 #define DFLAG_STATIC 2
 #define DFLAG_INLINE 4
-#define DFLAG_MANAGED 8
+#define DFLAG_THREADLOCAL 8
+#define DFLAG_NORETURN 16
+#define DFLAG_MANAGED (1<<31)
 
 #define TFLAG_CONST 1
 #define TFLAG_VOLATILE 2

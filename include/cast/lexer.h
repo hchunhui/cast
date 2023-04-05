@@ -86,8 +86,10 @@ enum {
 	TOK_BOOL,
 	TOK_INT128,
 	TOK_ATOMIC,
+	TOK_THREADLOCAL,
+	TOK_NORETURN,
 
-	TOK_MANAGED,
+	TOK_MANAGED = 16384,
 };
 
 Lexer *lexer_new(TextStream *ts);

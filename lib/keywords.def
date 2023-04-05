@@ -35,9 +35,11 @@ KWS("const", TOK_CONST);
 KWS("float", TOK_FLOAT);
 KWS("double", TOK_DOUBLE);
 KWS("_Bool", TOK_BOOL);
-KWS("_Atomic", TOK_ATOMIC);
 
-KWS("__managed", TOK_MANAGED);
+// C11
+KWS("_Atomic", TOK_ATOMIC);
+KWS("_Thread_local", TOK_THREADLOCAL);
+KWS("_Noreturn", TOK_NORETURN);
 
 // gcc extensions
 KWS("__int128", TOK_INT128);
@@ -51,3 +53,6 @@ KWS("__inline", TOK_INLINE);
 KWS("__inline__", TOK_INLINE);
 KWS("__restrict", TOK_RESTRICT);
 KWS("__restrict__", TOK_RESTRICT);
+
+// private extensions
+KWS("__managed", TOK_MANAGED);

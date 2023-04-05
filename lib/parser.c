@@ -1027,6 +1027,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		case TOK_AUTO: // ignore
 		case TOK_REGISTER: // ignore
 			N; break;
+		case TOK_THREADLOCAL:
+			N; pd->flags |= DFLAG_THREADLOCAL; break;
 		// type-qualifier
 		case TOK_CONST:
 			N; tflags |= TFLAG_CONST; break;
@@ -1053,6 +1055,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		// function-specifier
 		case TOK_INLINE:
 			N; pd->flags |= DFLAG_INLINE; break;
+		case TOK_NORETURN:
+			N; pd->flags |= DFLAG_NORETURN; break;
 		// type-specifier
 		case TOK_SIGNED:
 			N; is_signed = 1; break;
