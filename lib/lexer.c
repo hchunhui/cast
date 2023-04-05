@@ -152,7 +152,6 @@ struct Lexer_ {
 	int tok_type;
 	vec_char_t tok;
 	union {
-		long long int_cst;
 		unsigned long long uint_cst;
 		char char_cst;
 		double float_cst;
@@ -564,12 +563,7 @@ static void handle_int_cst(Lexer *l, int base)
 		else
 			l->tok_type = TOK_ULLONG_CST;
 	}
-	if (l->tok_type == TOK_INT_CST || l->tok_type == TOK_LONG_CST ||
-	    l->tok_type == TOK_LLONG_CST) {
-		l->u.int_cst = v;
-	} else {
-		l->u.uint_cst = v;
-	}
+	l->u.uint_cst = v;
 }
 
 static void handle_float_cst(Lexer *l)
@@ -737,11 +731,6 @@ const char *lexer_peek_string(Lexer *l)
 int lexer_peek_string_len(Lexer *l)
 {
 	return l->tok.length;
-}
-
-long long lexer_peek_int(Lexer *l)
-{
-	return l->u.int_cst;
 }
 
 unsigned long long lexer_peek_uint(Lexer *l)

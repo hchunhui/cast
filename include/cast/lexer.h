@@ -98,7 +98,6 @@ void lexer_next(Lexer *l);
 int lexer_peek(Lexer *l);
 const char *lexer_peek_string(Lexer *l);
 int lexer_peek_string_len(Lexer *l);
-long long lexer_peek_int(Lexer *l);
 unsigned long long lexer_peek_uint(Lexer *l);
 double lexer_peek_float(Lexer *l);
 char lexer_peek_char(Lexer *l);
