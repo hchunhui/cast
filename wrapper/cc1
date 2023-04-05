@@ -50,6 +50,7 @@ if if_preproc:
         ret = 1
     if '--cast-print' in (sys.argv):
         print(out.decode())
-    with open(output, 'wb') as f:
-        f.write(out)
+    if ret == 0:
+        with open(output, 'wb') as f:
+            f.write(out)
 exit(ret)
