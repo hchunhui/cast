@@ -405,6 +405,13 @@ static Expr *parse_unary_expr(Parser *p)
 			F(e = parse_unary_expr(p));
 			return exprSIZEOF(e);
 		}
+	case TOK_ALIGNOF: {
+		N; Type *t;
+		F(match(p, '('));
+		F(t = parse_type(p));
+		F(match(p, ')'));
+		return exprALIGNOF(t);
+	}
 	}
 	return NULL;
 }

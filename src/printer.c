@@ -687,6 +687,13 @@ static void expr_print(Expr *h)
 		printf(")");
 		break;
 	}
+	case EXPR_ALIGNOF: {
+		ExprALIGNOF *e = (ExprALIGNOF *) h;
+		printf("_Alignof (");
+		type_print_vardecl(0, e->t, "");
+		printf(")");
+		break;
+	}
 	case EXPR_INIT: {
 		ExprINIT *e = (ExprINIT *) h;
 		printf("{");

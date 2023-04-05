@@ -49,6 +49,7 @@ EXPR(EXPR,       Expr *, e)
 EXPR(CAST,       Type *, t, Expr *, e)
 EXPR(SIZEOF,     Expr *, e)
 EXPR(SIZEOFT,    Type *, t)
+EXPR(ALIGNOF,    Type *, t)
 //EXPR(INIT)
 
 // builtins
