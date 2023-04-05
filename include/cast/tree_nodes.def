@@ -24,6 +24,9 @@ TYPE(STRUCT, bool, is_union, const char *, tag, StmtBLOCK *, decls, unsigned int
 TYPE(TYPEDEF, const char *, name, unsigned int, flags)
 TYPE(ENUM, const char *, tag, EnumList *, list, unsigned int, flags)
 
+TYPE(TYPEOF, Expr *, e, unsigned int, flags)
+TYPE(AUTO, unsigned int, flags)
+
 EXPR(INT_CST,    int, v)
 EXPR(LONG_CST,   long, v)
 EXPR(UINT_CST,   unsigned int, v)
@@ -51,6 +54,8 @@ EXPR(SIZEOF,     Expr *, e)
 EXPR(SIZEOFT,    Type *, t)
 EXPR(ALIGNOF,    Type *, t)
 //EXPR(INIT)
+
+EXPR(STMT,       StmtBLOCK *, s)
 
 // builtins
 EXPR(VASTART,   Expr *, ap, const char *, last)

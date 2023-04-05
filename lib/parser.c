@@ -179,12 +179,20 @@ static Expr *parse_conditional_expr(Parser *p);    // 15
 static Expr *parse_assignment_expr(Parser *p);     // 16
 static Expr *parse_initializer(Parser *p);
 
+static StmtBLOCK *parse_block_stmt(Parser *p);
 static Expr *parse_parentheses_post(Parser *p)
 {
-	Expr *e;
-	F(e = parse_expr(p));
-	F(match(p, ')'));
-	return exprEXPR(e);
+	if (P == '{') {
+		StmtBLOCK *block;
+		F(block = parse_block_stmt(p));
+		F(match(p, ')'));
+		return exprSTMT(block);
+	} else {
+		Expr *e;
+		F(e = parse_expr(p));
+		F(match(p, ')'));
+		return exprEXPR(e);
+	}
 }
 
 static Expr *parse_ident_or_builtin(Parser *p, const char *id)
@@ -364,6 +372,8 @@ static Expr *parse_unary_expr(Parser *p)
 		return parse_postfix_expr_post(p, e, 3);
 
 	switch (P) {
+	case TOK_EXTENSION:
+		N; return parse_unary_expr(p);
 	case TOK_INC:
 		N; return applyUOP(EXPR_OP_PREINC, parse_unary_expr(p));
 	case TOK_DEC:
@@ -1156,6 +1166,20 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 				return false;
 			}
 			pd->type = typeENUM(tag, list, tflags);
+			break;
+		}
+		case TOK_TYPEOF: {
+			N; Expr *e;
+			F_(match(p, '('), false);
+			F_(e = parse_expr(p), false);
+			F_(match(p, ')'), false);
+			tflags |= parse_type_qualifier(p);
+			pd->type = typeTYPEOF(e, tflags);
+			break;
+		}
+		case TOK_AUTOTYPE: {
+			N; tflags |= parse_type_qualifier(p);
+			pd->type = typeAUTO(tflags);
 			break;
 		}
 		default:

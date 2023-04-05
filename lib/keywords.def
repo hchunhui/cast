@@ -56,6 +56,11 @@ KWS("__restrict", TOK_RESTRICT);
 KWS("__restrict__", TOK_RESTRICT);
 KWS("__alignof", TOK_ALIGNOF);
 KWS("__alignof__", TOK_ALIGNOF);
+KWS("__extension__", TOK_EXTENSION);
+KWS("__auto_type", TOK_AUTOTYPE);
+KWS("typeof", TOK_TYPEOF);
+KWS("__typeof", TOK_TYPEOF);
+KWS("__typeof__", TOK_TYPEOF);
 
 // private extensions
 KWS("__managed", TOK_MANAGED);

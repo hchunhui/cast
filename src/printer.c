@@ -47,6 +47,8 @@ static void type_flags_print(Type *t)
 	case TYPE_ENUM: flags = ((TypeENUM *) t)->flags; break;
 	case TYPE_INT128: flags = ((TypeINT128 *) t)->flags; break;
 	case TYPE_UINT128: flags = ((TypeUINT128 *) t)->flags; break;
+	case TYPE_TYPEOF: flags = ((TypeTYPEOF *) t)->flags; break;
+	case TYPE_AUTO: flags = ((TypeAUTO *) t)->flags; break;
 	default:
 		assert(false);
 		break;
@@ -243,6 +245,16 @@ static void type_print_annot(Type *type, bool simple)
 		}
 		break;
 	}
+	case TYPE_TYPEOF: {
+		TypeTYPEOF *t = (TypeTYPEOF *) type;
+		printf("__typeof__(");
+		expr_print(t->e);
+		printf(")");
+		break;
+	}
+	case TYPE_AUTO:
+		printf("__auto_type");
+		break;
 	default:
 		assert(false);
 		break;
@@ -272,6 +284,8 @@ static Type* type_get_basic(Type *type)
 	case TYPE_TYPEDEF:
 	case TYPE_STRUCT:
 	case TYPE_ENUM:
+	case TYPE_TYPEOF:
+	case TYPE_AUTO:
 		return type;
 	case TYPE_FUN:
 		return type_get_basic(((TypeFUN *) type)->rt);
@@ -305,6 +319,8 @@ static void type_print_declarator1(Type *type)
 	case TYPE_INT128:
 	case TYPE_UINT128:
 	case TYPE_TYPEDEF:
+	case TYPE_TYPEOF:
+	case TYPE_AUTO:
 		return;
 	case TYPE_FUN:
 		type_print_declarator1(((TypeFUN *) type)->rt);
@@ -345,6 +361,8 @@ static void type_print_declarator2(Type *type)
 	case TYPE_INT128:
 	case TYPE_UINT128:
 	case TYPE_TYPEDEF:
+	case TYPE_TYPEOF:
+	case TYPE_AUTO:
 		return;
 	case TYPE_FUN:
 		printf("(");
@@ -756,6 +774,12 @@ static void expr_print(Expr *h)
 		expr_print2(e->mem);
 		printf(")");
 		break;
+	}
+	case EXPR_STMT: {
+		ExprSTMT *e = (ExprSTMT *) h;
+		printf("(");
+		stmt_print((Stmt *) e->s, 0);
+		printf(")");
 	}
 	}
 }
