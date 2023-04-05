@@ -39,7 +39,8 @@ static void patch_decl(Patch *ctx, Stmt *h)
 			}
 			stmtBLOCK_prepend(
 				s->args,
-				stmtVARDECL(0, "__myctx", t, NULL, -1));
+				stmtVARDECL(0, "__myctx", t, NULL, -1,
+					    (Extension) {}));
 		}
 		break;
 	}

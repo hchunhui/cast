@@ -63,6 +63,8 @@ static void type_flags_print(Type *t)
 		printf("_Atomic ");
 }
 
+static void attrs_print(Attribute *attrs);
+
 static void lp()
 {
 	printf("(");
@@ -208,6 +210,7 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_STRUCT: {
 		TypeSTRUCT *t = (TypeSTRUCT *) type;
 		printf("%s", t->is_union ? "union" : "struct");
+		if (t->attrs) attrs_print(t->attrs);
 		if (t->tag) printf(" %s", t->tag);
 		if (t->decls) {
 			if (simple) {
@@ -414,11 +417,13 @@ static void type_print_vardecl(unsigned int flags, Type *type, const char *name)
 	type_print_declarator2(type);
 }
 
-static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *args, const char *name)
+static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *args, const char *name, Attribute *attrs)
 {
 	Type *rt = type->rt;
 	decl_flags_print(flags);
 	type_print_annot(type_get_basic(rt), false);
+	if (attrs)
+		attrs_print(attrs);
 	printf(" ");
 	type_print_declarator1(rt);
 	printf("%s(", name);
@@ -426,12 +431,15 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 		Stmt *p;
 		int i;
 		avec_foreach(&args->items, p, i) {
+			StmtVARDECL *p1 = (StmtVARDECL *) p;
 			if (i)
 				printf(", ");
 			type_print_vardecl(
-				((StmtVARDECL *) p)->flags,
-				((StmtVARDECL *) p)->type,
-				((StmtVARDECL *) p)->name);
+				p1->flags,
+				p1->type,
+				p1->name);
+			if (p1->ext.gcc_attribute)
+				attrs_print(p1->ext.gcc_attribute);
 		}
 	}
 	if (type->va_arg)
@@ -797,6 +805,27 @@ static void stmt_printb(Stmt *h, int level)
 	stmt_print(h, level);
 }
 
+static void attrs_print(Attribute *attrs)
+{
+	printf(" __attribute__((");
+	for (Attribute *a = attrs; a; a = a->next) {
+		printf("%s", a->name);
+		if (a->args.length) {
+			printf("(");
+			Expr *p;
+			int i;
+			avec_foreach(&a->args, p, i) {
+				if (i) printf(", ");
+				expr_print2(p);
+			}
+			printf(")");
+		}
+		if (a->next)
+			printf(", ");
+	}
+	printf("))");
+}
+
 static void stmt_print(Stmt *h, int level)
 {
 	if (h->type != STMT_DECLS) {
@@ -947,7 +976,7 @@ static void stmt_print(Stmt *h, int level)
 		type_print_annot(&s->type->h, true);
 		printf("\n");
 		print_level(level);
-		type_print_fundecl(s->flags, s->type, s->args, s->name);
+		type_print_fundecl(s->flags, s->type, s->args, s->name, s->ext.gcc_attribute);
 		if (s->body) {
 			printf("\n");
 			stmt_print(&s->body->h, level);
@@ -970,6 +999,9 @@ static void stmt_print(Stmt *h, int level)
 		type_print_vardecl(s->flags, s->type, s->name);
 		if (s->bitfield != -1)
 			printf(" : %d", s->bitfield);
+		if (s->ext.gcc_attribute) {
+			attrs_print(s->ext.gcc_attribute);
+		}
 		if (s->init) {
 			printf(" = ");
 			expr_print2(s->init);
@@ -992,6 +1024,9 @@ static void stmt_print(Stmt *h, int level)
 		}
 		printf("typedef ");
 		type_print_vardecl(0, s->type, s->name);
+		if (s->ext.gcc_attribute) {
+			attrs_print(s->ext.gcc_attribute);
+		}
 		printf(";\n");
 		break;
 	}

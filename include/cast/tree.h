@@ -135,6 +135,16 @@ typedef struct ExprCALL_ {
 	avec_expr_t args;
 } ExprCALL;
 
+typedef struct Attribute_ {
+	const char *name;
+	avec_expr_t args;
+	struct Attribute_ *next;
+} Attribute;
+
+typedef struct {
+	Attribute *gcc_attribute;
+} Extension;
+
 BEGIN_MANAGED
 ExprCALL *exprCALL(Expr *func);
 void exprCALL_append(ExprCALL *call, Expr *arg);
@@ -208,8 +218,8 @@ struct EnumList_ {
 #undef EXPR
 #undef TYPE
 
-#define ARGCOUNT_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, ...) _11
-#define ARGCOUNT(...) ARGCOUNT_IMPL(~, ## __VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define ARGCOUNT_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, ...) _13
+#define ARGCOUNT(...) ARGCOUNT_IMPL(~, ## __VA_ARGS__, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #define PASTE0(a, b) a ## b
 #define PASTE(a, b) PASTE0(a, b)
 #define GEN_0(TYPENAME, FUNCNAME, id)	\
@@ -275,6 +285,20 @@ struct EnumList_ {
 	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4, T5 v5); \
 	END_MANAGED
 
+#define GEN_12(TYPENAME, FUNCNAME, id, T1, v1, T2, v2, T3, v3, T4, v4, T5, v5, T6, v6) \
+	struct TYPENAME##id##_ { \
+		Tree h; \
+		T1 v1;  \
+		T2 v2;  \
+		T3 v3;  \
+		T4 v4;  \
+		T5 v5;  \
+		T6 v6;  \
+	}; \
+	BEGIN_MANAGED \
+	TYPENAME *FUNCNAME##id(T1 v1, T2 v2, T3 v3, T4 v4, T5 v5, T6 v6); \
+	END_MANAGED
+
 #define STMT(id, ...) PASTE(GEN_, ARGCOUNT(__VA_ARGS__))(Stmt, stmt, id, ## __VA_ARGS__)
 #define EXPR(id, ...) PASTE(GEN_, ARGCOUNT(__VA_ARGS__))(Expr, expr, id, ## __VA_ARGS__)
 #define TYPE(id, ...) PASTE(GEN_, ARGCOUNT(__VA_ARGS__))(Type, type, id, ## __VA_ARGS__)
@@ -292,6 +316,7 @@ struct EnumList_ {
 #undef GEN_6
 #undef GEN_8
 #undef GEN_10
+#undef GEN_12
 
 
 #endif /* TREE_H */

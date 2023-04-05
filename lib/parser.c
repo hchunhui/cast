@@ -770,6 +770,7 @@ typedef struct {
 	const char *ident;
 	StmtBLOCK *funargs;
 	struct scope_item *funscope;
+	Attribute *attrs;
 } Declarator;
 
 static void init_declarator(Declarator *pd)
@@ -780,6 +781,7 @@ static void init_declarator(Declarator *pd)
 	pd->ident = NULL;
 	pd->funargs = NULL;
 	pd->funscope = NULL;
+	pd->attrs = NULL;
 }
 
 static void free_funscope(Declarator *pd)
@@ -850,6 +852,7 @@ static unsigned int parse_type_qualifier(Parser *p)
 	return flags;
 }
 
+static bool parse_attribute(Parser *p, Attribute **pa);
 static Declarator parse_type1(Parser *p, Type **pbtype);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
@@ -906,6 +909,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				enter_scope(p);
 				StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
 				Declarator d1 = parse_type1(p, NULL);
+				F(parse_attribute(p, &d1.attrs));
 				free_funscope(&d1);
 				if (d1.type && d1.type->type == TYPE_VOID &&
 				    d1.ident == NULL && P == ')') {
@@ -917,7 +921,10 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				}
 				typeFUN_append(n, d1.type);
 				if (funargs) {
-					stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
+					stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1,
+									      (Extension) {
+										      .gcc_attribute = d1.attrs,
+									      }));
 					if (d1.ident) {
 						F(symset(p, d1.ident, SYM_IDENT), leave_scope(p));
 					}
@@ -928,10 +935,14 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						break;
 					}
 					d1 = parse_type1(p, NULL);
+					F(parse_attribute(p, &d1.attrs));
 					free_funscope(&d1);
 					typeFUN_append(n, d1.type);
 					if (funargs) {
-						stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1));
+						stmtBLOCK_append(funargs, stmtVARDECL(d1.flags, d1.ident, d1.type, NULL, -1,
+										      (Extension) {
+											      .gcc_attribute = d1.attrs,
+										      }));
 						if (d1.ident) {
 							F(symset(p, d1.ident, SYM_IDENT), leave_scope(p));
 						}
@@ -1034,6 +1045,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 
 	bool flag = true;
 	while (flag) {
+		F_(parse_attribute(p, &pd->attrs), false);
 		switch (P) {
 		// storage-class-specifier
 		case TOK_TYPEDEF:
@@ -1119,10 +1131,12 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		case TOK_STRUCT:
 		case TOK_UNION:
 		{
+			Attribute *attrs = NULL;
 			bool is_union = P == TOK_UNION;
 			N; F_(pd->type == NULL, false);
 			const char *tag = NULL;
 			StmtBLOCK *decls = NULL;
+			F_(parse_attribute(p, &attrs), false);
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
@@ -1131,16 +1145,19 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 				decls = parse_decls(p, true);
 				leave_scope(p);
 				F_(match(p, '}'), false);
+				F_(parse_attribute(p, &attrs), false); // ambiguous
 			}
 			tflags |= parse_type_qualifier(p);
-			pd->type = typeSTRUCT(is_union, tag, decls, tflags);
+			pd->type = typeSTRUCT(is_union, tag, decls, tflags, attrs);
 			break;
 		}
 		case TOK_ENUM:
 		{
+			Attribute *attrs = NULL;
 			N; F_(pd->type == NULL, false);
 			const char *tag = NULL;
 			StmtBLOCK *decls = NULL;
+			F_(parse_attribute(p, &attrs), false);
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
@@ -1160,12 +1177,15 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 					}
 				}
 				if (match(p, '}')) {
-					pd->type = typeENUM(tag, list, tflags);
+					F_(parse_attribute(p, &attrs), false); // ambiguous
+					tflags |= parse_type_qualifier(p);
+					pd->type = typeENUM(tag, list, tflags, attrs);
 					break;
 				}
 				return false;
 			}
-			pd->type = typeENUM(tag, list, tflags);
+			tflags |= parse_type_qualifier(p);
+			pd->type = typeENUM(tag, list, tflags, attrs);
 			break;
 		}
 		case TOK_TYPEOF: {
@@ -1246,6 +1266,52 @@ static Declarator parse_type1(Parser *p, Type **pbtype)
 
 	free_funscope(&d);
 	return err;
+}
+
+static bool parse_attribute1(Parser *p, Attribute *a)
+{
+	if (match(p, '(')) {
+		if (!match(p, ')')) {
+			Expr *arg;
+			F_(arg = parse_assignment_expr(p), false);
+			avec_push(&a->args, arg);
+			while (match(p, ',')) {
+				F_(arg = parse_assignment_expr(p), false);
+				avec_push(&a->args, arg);
+			}
+			F_(match(p, ')'), false);
+		}
+	}
+	return true;
+}
+
+static bool parse_attribute(Parser *p, Attribute **pa)
+{
+	while (match(p, TOK_ATTRIBUTE)) {
+		F_(match(p, '('), false); F_(match(p, '('), false);
+		bool flag = true;
+		while (flag) {
+			int tok_type = P;
+			if (tok_type == TOK_IDENT ||
+			    (tok_type > TOK_KEYWORD_START &&
+			     tok_type < TOK_KEYWORD_END)) {
+				Attribute *a = __new(Attribute);
+				a->name = get_and_next(p);
+				avec_init(&a->args);
+				a->next = *pa;
+				*pa = a;
+				F_(parse_attribute1(p, a), false);
+			} else if (tok_type == ',') {
+				N;
+			} else if (tok_type == ')') {
+				flag = false;
+			} else {
+				return false;
+			}
+		}
+		F_(match(p, ')'), false); F_(match(p, ')'), false);
+	}
+	return true;
 }
 
 static StmtBLOCK *parse_stmts(Parser *p)
@@ -1348,7 +1414,10 @@ Stmt *make_decl(Parser *p, Declarator d)
 	if (d.type->type == TYPE_FUN) {
 		if (p->managed_count)
 			d.flags |= DFLAG_MANAGED;
-		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL);
+		Attribute *attrs = d.attrs;
+		F(parse_attribute(p, &attrs));
+		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL,
+				    (Extension) {.gcc_attribute = attrs});
 	} else {
 		int bitfield = -1;
 		if (match(p, ':')) {
@@ -1358,11 +1427,14 @@ Stmt *make_decl(Parser *p, Declarator d)
 				return NULL;
 			}
 		}
+		Attribute *attrs = d.attrs;
+		F(parse_attribute(p, &attrs));
 		Expr *init = NULL;
 		if (match(p, '=')) {
 			F(init = parse_initializer(p));
 		}
-		decl1 = stmtVARDECL(d.flags, d.ident, d.type, init, bitfield);
+		decl1 = stmtVARDECL(d.flags, d.ident, d.type, init, bitfield,
+				    (Extension) {.gcc_attribute = attrs});
 	}
 	return decl1;
 }
@@ -1383,6 +1455,8 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 
 	if (d.type->type == TYPE_FUN && P == '{') {
 		F(!is_typedef);
+		Attribute *attrs = d.attrs;
+		F(parse_attribute(p, &attrs));
 		StmtBLOCK *b;
 		restore_scope(p, d.funscope);
 		b = parse_block_stmt(p);
@@ -1390,12 +1464,16 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 		F(b);
 		if (p->managed_count)
 			d.flags |= DFLAG_MANAGED;
-		return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, b);
+		return stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, b,
+				   (Extension) {.gcc_attribute = attrs});
 	}
 
 	Stmt *decl1;
 	if (is_typedef) {
-		decl1 = stmtTYPEDEF(d.ident, d.type);
+		Attribute *attrs = d.attrs;
+		F(parse_attribute(p, &attrs));
+		decl1 = stmtTYPEDEF(d.ident, d.type,
+				    (Extension) {.gcc_attribute = attrs});
 	} else {
 		F(decl1 = make_decl(p, d), free_funscope(&d));
 	}
@@ -1414,9 +1492,10 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 					sprintf(buf, "__anon_struct%d", p->counter++);
 					b->tag = __new_cstring(buf);
 				}
-				Type *ntype = typeSTRUCT(b->is_union, b->tag, b->decls, 0);
+				Type *ntype = typeSTRUCT(b->is_union, b->tag, b->decls, 0, b->attrs);
 				b->decls = NULL;
-				stmtDECLS_append(decls, stmtVARDECL(0, NULL, ntype, NULL, -1));
+				stmtDECLS_append(decls, stmtVARDECL(0, NULL, ntype, NULL, -1,
+								    (Extension) {}));
 			}
 		}
 		stmtDECLS_append(decls, decl1);
@@ -1425,6 +1504,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 			dd.type = btype;
 			dd.ident = NULL;
 			dd.funargs = NULL;
+			parse_attribute(p, &dd.attrs);
 			parse_declarator(p, &dd);
 			if (!dd.ident) {
 				return NULL;
@@ -1434,7 +1514,13 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 			}
 
 			if (is_typedef) {
-				F(decl1 = stmtTYPEDEF(dd.ident, dd.type), free_funscope(&dd));
+				Attribute *attrs = dd.attrs;
+				F(parse_attribute(p, &attrs));
+				F(decl1 = stmtTYPEDEF(dd.ident, dd.type,
+						      (Extension) {
+							      .gcc_attribute = attrs,
+						      }),
+				  free_funscope(&dd));
 			} else {
 				F(decl1 = make_decl(p, dd), free_funscope(&dd));
 			}
