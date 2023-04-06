@@ -87,3 +87,7 @@ STMT(TYPEDEF, const char *, name, Type *,    type, Extension, ext)
 STMT(STRUCT,  const char *, name, Type *,    type)
 STMT(UNION,   const char *, name, Type *,    type)
 STMT(ENUM,    const char *, name, Type *,    type)
+
+// gcc extensions
+STMT(GOTOADDR, Expr *, expr)
+STMT(LABELDECL, const char *, name)

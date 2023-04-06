@@ -431,6 +431,11 @@ static Expr *parse_unary_expr(Parser *p)
 		F(match(p, ')'));
 		return exprALIGNOF(t);
 	}
+	case TOK_AND:
+		N; if (P == TOK_IDENT) {
+			return applyUOP(EXPR_OP_ADDROFLABEL, exprIDENT(get_and_next(p)));
+		}
+		return NULL;
 	}
 	return NULL;
 }
@@ -1724,16 +1729,40 @@ Stmt *parse_stmt(Parser *p)
 		return stmtRETURN(e);
 	}
 	case TOK_GOTO: {
-		N; F(P == TOK_IDENT);
-		const char *id = get_and_next(p);
-		F(match(p, ';'));
-		return stmtGOTO(id);
+		N; if (P == TOK_IDENT) {
+			const char *id = get_and_next(p);
+			F(match(p, ';'));
+			return stmtGOTO(id);
+		} else if (P == '*') {
+			Expr *e;
+			F(e = parse_expr(p));
+			F(match(p, ';'));
+			return stmtGOTOADDR(e);
+		}
+		return NULL;
 	}
 	case '{': {
 		return (Stmt *) parse_block_stmt(p);
 	}
 	case ';': {
 		N; return stmtSKIP();
+	}
+	case TOK_LABEL: {
+		N; F(P == TOK_IDENT);
+		Stmt *l;
+		F(l = stmtLABELDECL(get_and_next(p)));
+		if (P == ',') {
+			StmtDECLS *decls = stmtDECLS();
+			stmtDECLS_append(decls, l);
+			while(match(p, ',')) {
+				F(P == TOK_IDENT);
+				F(l = stmtLABELDECL(get_and_next(p)));
+				stmtDECLS_append(decls, l);
+			}
+			F(match(p, ';'));
+			l = (Stmt *) decls;
+		}
+		return l;
 	}
 	default: {
 		Expr *e;

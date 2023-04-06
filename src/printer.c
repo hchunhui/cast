@@ -674,6 +674,9 @@ static void expr_print(Expr *h)
 		case EXPR_OP_POSTINC: expr_print1(e->e); printf(" ++"); break;
 		case EXPR_OP_PREDEC: printf("-- "); expr_print1(e->e); break;
 		case EXPR_OP_POSTDEC: expr_print1(e->e); printf(" --"); break;
+
+		case EXPR_OP_ADDROFLABEL:
+			printf("&& %s", ((ExprIDENT * )e->e)->id); break;
 		default: abort();
 		}
 		break;
@@ -1048,6 +1051,18 @@ static void stmt_print(Stmt *h, int level)
 		avec_foreach(&s->items, p, i) {
 			stmt_print(p, level);
 		}
+		break;
+	}
+	case STMT_GOTOADDR: {
+		StmtGOTOADDR *s = (StmtGOTOADDR *) h;
+		printf("goto ");
+		expr_print(s->expr);
+		printf(";\n");
+		break;
+	}
+	case STMT_LABELDECL: {
+		StmtLABELDECL *s = (StmtLABELDECL *) h;
+		printf("__label__ %s;\n", s->name);
 		break;
 	}
 	default:

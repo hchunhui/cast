@@ -69,6 +69,9 @@ typedef enum {
 	EXPR_OP_POSTINC,
 	EXPR_OP_PREDEC,
 	EXPR_OP_POSTDEC,
+
+	// gcc extensions
+	EXPR_OP_ADDROFLABEL,
 } ExprUnOp;
 
 typedef enum {

@@ -258,6 +258,9 @@ static void patch_call1_stmt(Patch *ctx, Stmt *h)
 		}
 		break;
 	}
+	case STMT_LABELDECL: {
+		break;
+	}
 	case STMT_TYPEDEF: {
 		StmtTYPEDEF *s = (StmtTYPEDEF *) h;
 		break;
@@ -269,6 +272,11 @@ static void patch_call1_stmt(Patch *ctx, Stmt *h)
 		avec_foreach(&s->items, s1, i) {
 			patch_call1_stmt(ctx, s1);
 		}
+		break;
+	}
+	case STMT_GOTOADDR: {
+		StmtGOTOADDR *s = (StmtGOTOADDR *) h;
+		patch_call1_expr(ctx, s->expr);
 		break;
 	}
 	default:
