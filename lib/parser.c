@@ -101,7 +101,16 @@ static void parser_init(Parser *p, Lexer *l)
 	p->lexer = l;
 	p->scopes = NULL;
 	enter_scope(p);
-	symset(p, "__builtin_va_list", SYM_TYPE);
+	const char *const gcc_builtin_types[] = {
+		"__builtin_va_list",
+		"_Float16", "_Float16x",
+		"_Float32", "_Float32x",
+		"_Float64", "_Float64x",
+		"_Float128", "_Float128x",
+		NULL
+	};
+	for (const char *const *t = gcc_builtin_types; *t; t++)
+		symset(p, *t, SYM_TYPE);
 	p->counter = 0;
 	p->next_count = 0;
 
@@ -1047,6 +1056,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 	while (flag) {
 		F_(parse_attribute(p, &pd->attrs), false);
 		switch (P) {
+		case TOK_EXTENSION:
+			N; break;
 		// storage-class-specifier
 		case TOK_TYPEDEF:
 			N; pd->is_typedef = true; break;

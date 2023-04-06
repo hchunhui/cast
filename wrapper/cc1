@@ -32,7 +32,7 @@ cc1path = sp.check_output(['gcc', '-print-prog-name=cc1']).strip()
 
 arg = [cc1path] + filter_argv(sys.argv[1:])
 if if_preproc:
-    arg += ['-U', '__GNUC__', '-D', '__CAST_MANAGED__']
+    arg += ['-D', '__CAST_MANAGED__']
 
 ret = sp.call(arg)
 if ret != 0:
