@@ -143,6 +143,7 @@ typedef struct Attribute_ {
 
 typedef struct {
 	Attribute *gcc_attribute;
+	const char *gcc_asm_name;
 } Extension;
 
 BEGIN_MANAGED

@@ -1408,16 +1408,32 @@ static Expr *parse_initializer(Parser *p)
 	return parse_assignment_expr(p);
 }
 
-Stmt *make_decl(Parser *p, Declarator d)
+static bool parse_asm_name(Parser *p, const char **name)
+{
+	if (match(p, TOK_ASM)) {
+		F_(match(p, '('), false);
+		F_(P == TOK_STRING_CST, false);
+		int len = PSL;
+		char *str = __new_(len);
+		memcpy(str, PS, len);
+		*name = str;
+		N;
+		F_(match(p, ')'), false);
+	}
+	return true;
+}
+
+static Stmt *make_decl(Parser *p, Declarator d)
 {
 	Stmt *decl1;
+	Extension ext = (Extension) {};
 	if (d.type->type == TYPE_FUN) {
 		if (p->managed_count)
 			d.flags |= DFLAG_MANAGED;
-		Attribute *attrs = d.attrs;
-		F(parse_attribute(p, &attrs));
-		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL,
-				    (Extension) {.gcc_attribute = attrs});
+		F(parse_asm_name(p, &ext.gcc_asm_name));
+		ext.gcc_attribute = d.attrs;
+		F(parse_attribute(p, &ext.gcc_attribute));
+		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL, ext);
 	} else {
 		int bitfield = -1;
 		if (match(p, ':')) {
@@ -1426,15 +1442,16 @@ Stmt *make_decl(Parser *p, Declarator d)
 			} else {
 				return NULL;
 			}
+		} else {
+			F(parse_asm_name(p, &ext.gcc_asm_name));
 		}
-		Attribute *attrs = d.attrs;
-		F(parse_attribute(p, &attrs));
+		ext.gcc_attribute = d.attrs;
+		F(parse_attribute(p, &ext.gcc_attribute));
 		Expr *init = NULL;
 		if (match(p, '=')) {
 			F(init = parse_initializer(p));
 		}
-		decl1 = stmtVARDECL(d.flags, d.ident, d.type, init, bitfield,
-				    (Extension) {.gcc_attribute = attrs});
+		decl1 = stmtVARDECL(d.flags, d.ident, d.type, init, bitfield, ext);
 	}
 	return decl1;
 }

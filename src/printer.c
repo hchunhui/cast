@@ -509,6 +509,28 @@ static const char *uopname(ExprUnOp op)
 	}
 }
 
+static void print_quoted(const char *v, int len)
+{
+	for (int i = 0; i < len; i++) {
+		switch(v[i]) {
+		case '\\': printf("\\\\"); break;
+		case '\"': printf("\\\""); break;
+		case '\a': printf("\\a"); break;
+		case '\b': printf("\\b"); break;
+		case '\f': printf("\\f"); break;
+		case '\n': printf("\\n"); break;
+		case '\r': printf("\\r"); break;
+		case '\t': printf("\\t"); break;
+		default:
+			if (v[i] >= 0 && v[i] < 32) {
+				printf("\"\"\\x%x\"\"", v[i]); break;
+			} else {
+				putchar(v[i]); break;
+			}
+		}
+	}
+}
+
 static void expr_print(Expr *h)
 {
 	switch (h->type) {
@@ -568,24 +590,7 @@ static void expr_print(Expr *h)
 	case EXPR_STRING_CST: {
 		ExprSTRING_CST *e = (ExprSTRING_CST *) h;
 		putchar('"');
-		for (int i = 0; i < e->len - 1; i++) {
-			switch(e->v[i]) {
-			case '\\': printf("\\\\"); break;
-			case '\"': printf("\\\""); break;
-			case '\a': printf("\\a"); break;
-			case '\b': printf("\\b"); break;
-			case '\f': printf("\\f"); break;
-			case '\n': printf("\\n"); break;
-			case '\r': printf("\\r"); break;
-			case '\t': printf("\\t"); break;
-			default:
-				if (e->v[i] >= 0 && e->v[i] < 32) {
-					printf("\"\"\\x%x\"\"", e->v[i]); break;
-				} else {
-					putchar(e->v[i]); break;
-				}
-			}
-		}
+		print_quoted(e->v, e->len - 1);
 		putchar('"');
 		break;
 	}
@@ -999,6 +1004,12 @@ static void stmt_print(Stmt *h, int level)
 		type_print_vardecl(s->flags, s->type, s->name);
 		if (s->bitfield != -1)
 			printf(" : %d", s->bitfield);
+		if (s->ext.gcc_asm_name) {
+			printf(" __asm__(\"");
+			int len = strlen(s->ext.gcc_asm_name);
+			print_quoted(s->ext.gcc_asm_name, len);
+			printf("\")");
+		}
 		if (s->ext.gcc_attribute) {
 			attrs_print(s->ext.gcc_attribute);
 		}

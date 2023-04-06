@@ -63,6 +63,9 @@ KWS("__typeof", TOK_TYPEOF);
 KWS("__typeof__", TOK_TYPEOF);
 KWS("__attribute", TOK_ATTRIBUTE);
 KWS("__attribute__", TOK_ATTRIBUTE);
+KWS("asm", TOK_ASM);
+KWS("__asm", TOK_ASM);
+KWS("__asm__", TOK_ASM);
 
 // private extensions
 KWS("__managed", TOK_MANAGED);
