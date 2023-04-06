@@ -747,6 +747,13 @@ static void expr_print(Expr *h)
 					case DES_FIELD:
 						printf(".%s", d->field);
 						break;
+					case DES_INDEXRANGE:
+						printf("[");
+						expr_print(d->index);
+						printf(" ... ");
+						expr_print(d->indexhigh);
+						printf("]");
+						break;
 					}
 					d = d->next;
 				}

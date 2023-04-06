@@ -159,8 +159,9 @@ typedef struct Designator_ {
 	enum {
 		DES_FIELD,
 		DES_INDEX,
+		DES_INDEXRANGE,
 	} type;
-	Expr *index;
+	Expr *index, *indexhigh;
 	const char *field;
 	struct Designator_ *next;
 } Designator;

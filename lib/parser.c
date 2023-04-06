@@ -1373,6 +1373,10 @@ static bool match_initialzer_item(Parser *p, ExprINIT *init)
 			n = __new(Designator);
 			n->type = DES_INDEX;
 			F(n->index = parse_expr(p));
+			if (match(p, TOK_DOT3)) {
+				F(n->indexhigh = parse_expr(p));
+				n->type = DES_INDEXRANGE;
+			}
 			F(match(p, ']'));
 		} else if (match(p, '.')) {
 			n = __new(Designator);
