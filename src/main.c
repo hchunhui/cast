@@ -279,6 +279,13 @@ static void patch_call1_stmt(Patch *ctx, Stmt *h)
 		patch_call1_expr(ctx, s->expr);
 		break;
 	}
+	case STMT_CASERANGE: {
+		StmtCASERANGE *s = (StmtCASERANGE *) h;
+		patch_call1_expr(ctx, s->low);
+		patch_call1_expr(ctx, s->high);
+		patch_call1_stmt(ctx, s->stmt);
+		break;
+	}
 	default:
 		abort();
 	}

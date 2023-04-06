@@ -1065,6 +1065,16 @@ static void stmt_print(Stmt *h, int level)
 		printf("__label__ %s;\n", s->name);
 		break;
 	}
+	case STMT_CASERANGE: {
+		StmtCASERANGE *s = (StmtCASERANGE *) h;
+		printf("case ");
+		expr_print1(s->low);
+		printf(" ... ");
+		expr_print1(s->high);
+		printf(":\n");
+		stmt_print(s->stmt, level + 1);
+		break;
+	}
 	default:
 		abort();
 	}

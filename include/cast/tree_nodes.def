@@ -91,3 +91,4 @@ STMT(ENUM,    const char *, name, Type *,    type)
 // gcc extensions
 STMT(GOTOADDR, Expr *, expr)
 STMT(LABELDECL, const char *, name)
+STMT(CASERANGE, Expr *, low, Expr *, high, Stmt *, stmt)

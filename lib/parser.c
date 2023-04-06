@@ -1706,9 +1706,15 @@ Stmt *parse_stmt(Parser *p)
 		return stmtSWITCH(e, b);
 	}
 	case TOK_CASE: {
-		N; Expr *e;
+		N; Expr *e; Stmt *s;
 		F(e = parse_expr(p));
-		Stmt *s;
+		if (match(p, TOK_DOT3)) {
+			Expr *eh;
+			F(eh = parse_expr(p));
+			F(match(p, ':'));
+			F(s = parse_stmt(p));
+			return stmtCASERANGE(e, eh, s);
+		}
 		F(match(p, ':'));
 		F(s = parse_stmt(p));
 		return stmtCASE(e, s);
