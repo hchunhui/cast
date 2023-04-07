@@ -885,6 +885,7 @@ static bool parse_attribute(Parser *p, Attribute **pa);
 static Declarator parse_type1(Parser *p, Type **pbtype);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
+	F(parse_attribute(p, &d->attrs));
 	bool flag = false;
 	if (match(p, '*')) {
 		unsigned int flags = parse_type_qualifier(p);
