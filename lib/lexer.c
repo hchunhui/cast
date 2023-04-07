@@ -759,12 +759,12 @@ static void lexer_init(Lexer *l, TextStream *ts)
 #include "keywords.def"
 #undef KWS
 
-	lexer_next(l);
-
 	l->line = 1;
 	l->path[255] = 0;
 	strncpy(l->path, "", 255);
 	vec_init(&l->tok_temp);
+
+	lexer_next(l);
 }
 
 static void lexer_free(Lexer *l)
