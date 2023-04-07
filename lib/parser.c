@@ -1774,6 +1774,73 @@ Stmt *parse_stmt(Parser *p)
 		}
 		return l;
 	}
+	case TOK_ASM: {
+		N; unsigned int flags = 0;
+		while (true) {
+			if (match(p, TOK_VOLATILE)) {
+				flags |= ASM_FLAG_VOLATILE;
+			} else if (match(p, TOK_INLINE)) {
+				flags |= ASM_FLAG_INLINE;
+			} else if (match(p, TOK_GOTO)) {
+				flags |= ASM_FLAG_GOTO;
+			} else {
+				break;
+			}
+		}
+		F(match(p, '('));
+		F(P == TOK_STRING_CST);
+		const char *content = get_and_next(p);
+		StmtASM *s = stmtASM(flags, content);
+		if (match(p, ':')) {
+			if (P == '[' || P == TOK_STRING_CST) {
+				do {
+					ASMOper oper = (ASMOper) {};
+					if (match(p, '[')) {
+						F(P == TOK_IDENT);
+						oper.symbol = get_and_next(p);
+						F(match(p, ']'));
+					}
+					F(P == TOK_STRING_CST);
+					oper.constraint = get_and_next(p);
+					F(match(p, '('));
+					F(oper.variable = parse_expr(p));
+					F(match(p, ')'));
+					stmtASM_append_output(s, oper);
+				} while (match(p, ','));
+			}
+			if (match(p, ':')) {
+				if (P == '[' || P == TOK_STRING_CST) {
+					do {
+						ASMOper oper = (ASMOper) {};
+						if (match(p, '[')) {
+							F(P == TOK_IDENT);
+							oper.symbol = get_and_next(p);
+							F(match(p, ']'));
+						}
+						F(P == TOK_STRING_CST);
+						oper.constraint = get_and_next(p);
+						F(match(p, '('));
+						F(oper.variable = parse_expr(p));
+						F(match(p, ')'));
+						stmtASM_append_input(s, oper);
+					} while (match(p, ','));
+				}
+				if (match(p, ':')) {
+					const char *cl;
+					if (P == TOK_STRING_CST) {
+						do {
+							F(P == TOK_STRING_CST);
+							cl = get_and_next(p);
+							stmtASM_append_clobber(s, cl);
+						} while(match(p, ','));
+					}
+				}
+			}
+		}
+		F(match(p, ')'));
+		F(match(p, ';'));
+		return (Stmt *) s;
+	}
 	default: {
 		Expr *e;
 		if (P == TOK_IDENT) {

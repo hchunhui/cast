@@ -1082,6 +1082,52 @@ static void stmt_print(Stmt *h, int level)
 		stmt_print(s->stmt, level + 1);
 		break;
 	}
+	case STMT_ASM: {
+		int i;
+		StmtASM *s = (StmtASM *) h;
+		printf("__asm__");
+		if (s->flags & ASM_FLAG_VOLATILE)
+			printf(" volatile");
+		if (s->flags & ASM_FLAG_INLINE)
+			printf(" inline");
+		if (s->flags & ASM_FLAG_GOTO)
+			printf(" goto");
+		printf(" (\"");
+		print_quoted(s->content, strlen(s->content));
+		printf("\" : ");
+		ASMOper *oper;
+		avec_foreach_ptr(&s->outputs, oper, i) {
+			if (i) printf(", ");
+			if (oper->symbol)
+				printf("[%s] ", oper->symbol);
+			printf("\"");
+			print_quoted(oper->constraint, strlen(oper->constraint));
+			printf("\" (");
+			expr_print(oper->variable);
+			printf(")");
+		}
+		printf(" : ");
+		avec_foreach_ptr(&s->inputs, oper, i) {
+			if (i) printf(", ");
+			if (oper->symbol)
+				printf("[%s] ", oper->symbol);
+			printf("\"");
+			print_quoted(oper->constraint, strlen(oper->constraint));
+			printf("\" (");
+			expr_print(oper->variable);
+			printf(")");
+		}
+		printf(" : ");
+		const char *clobber;
+		avec_foreach(&s->clobbers, clobber, i) {
+			if (i) printf(", ");
+			printf("\"");
+			print_quoted(clobber, strlen(clobber));
+			printf("\"");
+		}
+		printf(");\n");
+		break;
+	}
 	default:
 		abort();
 	}

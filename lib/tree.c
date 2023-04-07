@@ -87,6 +87,33 @@ void stmtDECLS_append(StmtDECLS *block, Stmt *i)
 	(void) avec_push(&block->items, i);
 }
 
+StmtASM *stmtASM(unsigned int flags, const char *content)
+{
+	StmtASM *t = __new(StmtASM);
+	t->h.type = STMT_ASM;
+	t->flags = flags;
+	t->content = content;
+	avec_init(&t->outputs);
+	avec_init(&t->inputs);
+	avec_init(&t->clobbers);
+	return t;
+}
+
+void stmtASM_append_output(StmtASM *s, ASMOper oper)
+{
+	(void) avec_push(&s->outputs, oper);
+}
+
+void stmtASM_append_input(StmtASM *s, ASMOper oper)
+{
+	(void) avec_push(&s->inputs, oper);
+}
+
+void stmtASM_append_clobber(StmtASM *s, const char *name)
+{
+	(void) avec_push(&s->clobbers, name);
+}
+
 END_MANAGED
 
 #define ARGCOUNT_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, ...) _13

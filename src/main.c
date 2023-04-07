@@ -286,6 +286,9 @@ static void patch_call1_stmt(Patch *ctx, Stmt *h)
 		patch_call1_stmt(ctx, s->stmt);
 		break;
 	}
+	case STMT_ASM: {
+		break;
+	}
 	default:
 		abort();
 	}

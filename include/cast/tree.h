@@ -30,6 +30,8 @@ typedef struct Tree_ {
 #define STMT(id, ...)
 		STMT_BLOCK,
 		STMT_DECLS,
+		// gcc extensions
+		STMT_ASM,
 
 #undef  EXPR
 #define EXPR(id, ...) EXPR_##id,
@@ -204,6 +206,32 @@ StmtDECLS *stmtDECLS();
 void stmtDECLS_append(StmtDECLS *decls, Stmt *i);
 END_MANAGED
 
+#define ASM_FLAG_VOLATILE 1
+#define ASM_FLAG_INLINE   2
+#define ASM_FLAG_GOTO     4
+
+typedef struct ASMOper_ {
+	const char *symbol;
+	const char *constraint;
+	Expr *variable;
+} ASMOper;
+typedef avec_t(ASMOper) avec_asmoper_t;
+typedef avec_t(const char *) avec_str_t;
+typedef struct StmtASM_ {
+	Stmt h;
+	unsigned int flags;
+	const char *content;
+	avec_asmoper_t outputs;
+	avec_asmoper_t inputs;
+	avec_str_t clobbers;
+} StmtASM;
+
+BEGIN_MANAGED
+StmtASM *stmtASM(unsigned int flags, const char *content);
+void stmtASM_append_output(StmtASM *s, ASMOper oper);
+void stmtASM_append_input(StmtASM *s, ASMOper oper);
+void stmtASM_append_clobber(StmtASM *s, const char *name);
+END_MANAGED
 
 struct EnumPair_ {
 	const char *id;
