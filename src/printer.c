@@ -38,6 +38,7 @@ static void type_flags_print(Type *t)
 	case TYPE_LDOUBLE: flags = ((TypeLDOUBLE *) t)->flags; break;
 	case TYPE_DOUBLE: flags = ((TypeDOUBLE *) t)->flags; break;
 	case TYPE_CHAR: flags = ((TypeCHAR *) t)->flags; break;
+	case TYPE_SCHAR: flags = ((TypeSCHAR *) t)->flags; break;
 	case TYPE_UCHAR: flags = ((TypeUCHAR *) t)->flags; break;
 	case TYPE_PTR: flags = ((TypePTR *) t)->flags; break;
 	case TYPE_ARRAY: flags = ((TypeARRAY *) t)->flags; break;
@@ -166,6 +167,9 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_CHAR:
 		printf("char");
 		break;
+	case TYPE_SCHAR:
+		printf("signed char");
+		break;
 	case TYPE_UCHAR:
 		printf("unsigned char");
 		break;
@@ -273,6 +277,7 @@ static Type* type_get_basic(Type *type)
 	case TYPE_LONG:
 	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_SCHAR:
 	case TYPE_UINT:
 	case TYPE_USHORT:
 	case TYPE_ULONG:
@@ -310,6 +315,7 @@ static void type_print_declarator1(Type *type)
 	case TYPE_LONG:
 	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_SCHAR:
 	case TYPE_UINT:
 	case TYPE_USHORT:
 	case TYPE_ULONG:
@@ -352,6 +358,7 @@ static void type_print_declarator2(Type *type)
 	case TYPE_LONG:
 	case TYPE_LLONG:
 	case TYPE_CHAR:
+	case TYPE_SCHAR:
 	case TYPE_UINT:
 	case TYPE_USHORT:
 	case TYPE_ULONG:

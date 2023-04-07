@@ -1261,7 +1261,12 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		} else if (tcount == 1) {
 			if (is_short + long_count == 0) {
 				if (is_char) {
-					pd->type = is_unsigned ? typeUCHAR(tflags) : typeCHAR(tflags);
+					if (is_signed)
+						pd->type = typeSCHAR(tflags);
+					else if (is_unsigned)
+						pd->type = typeUCHAR(tflags);
+					else
+						pd->type = typeCHAR(tflags);
 				} else if (is_int128) {
 					pd->type = is_unsigned ? typeUINT128(tflags) : typeINT128(tflags);
 				} else if (scount == 0) {
