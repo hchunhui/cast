@@ -385,6 +385,8 @@ static void type_print_declarator2(Type *type)
 			type_print_declarator1(p);
 			type_print_declarator2(p);
 		}
+		if (((TypeFUN *) type)->at.length == 0)
+			printf("void");
 		if (((TypeFUN *) type)->va_arg)
 			printf(", ...");
 		printf(")");
@@ -448,6 +450,8 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 			if (p1->ext.gcc_attribute)
 				attrs_print(p1->ext.gcc_attribute);
 		}
+	} else {
+		printf("void");
 	}
 	if (type->va_arg)
 		printf(", ...");
