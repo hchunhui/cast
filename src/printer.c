@@ -803,6 +803,25 @@ static void expr_print(Expr *h)
 		printf("(");
 		stmt_print((Stmt *) e->s, 0);
 		printf(")");
+		break;
+	}
+	case EXPR_GENERIC: {
+		ExprGENERIC *e = (ExprGENERIC *) h;
+		printf("_Generic(");
+		expr_print2(e->expr);
+		GENERICPair *item;
+		int i;
+		avec_foreach_ptr(&e->items, item, i) {
+			printf(", ");
+			if (item->type)
+				type_print_vardecl(0, item->type, "");
+			else
+				printf("default");
+			printf(": ");
+			expr_print2(item->expr);
+		}
+		printf(")");
+		break;
 	}
 	}
 }

@@ -146,6 +146,16 @@ static void patch_call1_expr(Patch *ctx, Expr *h)
 		}
 		break;
 	}
+	case EXPR_GENERIC: {
+		ExprGENERIC *e = (ExprGENERIC *) h;
+		patch_call1_expr(ctx, e->expr);
+		GENERICPair *item;
+		int i;
+		avec_foreach_ptr(&e->items, item, i) {
+			patch_call1_expr(ctx, item->expr);
+		}
+		break;
+	}
 	default:
 		break;
 	}

@@ -41,6 +41,7 @@ KWS("_Atomic", TOK_ATOMIC);
 KWS("_Thread_local", TOK_THREADLOCAL);
 KWS("_Noreturn", TOK_NORETURN);
 KWS("_Alignof", TOK_ALIGNOF);
+KWS("_Generic", TOK_GENERIC);
 
 // gcc extensions
 KWS("__int128", TOK_INT128);

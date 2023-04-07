@@ -297,6 +297,21 @@ static Expr *parse_primary_expr(Parser *p)
 	}
 	case '(':
 		N; return parse_parentheses_post(p);
+	case TOK_GENERIC: {
+		N; Expr *expr;
+		F(match(p, '('));
+		F(expr = parse_assignment_expr(p));
+		ExprGENERIC *g = exprGENERIC(expr);
+		while(match(p, ',')) {
+			GENERICPair item = (GENERICPair) {};
+			F(match(p, TOK_DEFAULT) || (item.type = parse_type(p)));
+			F(match(p, ':'));
+			F(item.expr = parse_assignment_expr(p));
+			exprGENERIC_append(g, item);
+		}
+		F(match(p, ')'));
+		return (Expr *) g;
+	}
 	default:
 		return NULL;
 	}

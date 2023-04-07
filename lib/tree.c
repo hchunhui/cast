@@ -56,6 +56,20 @@ void exprINIT_append(ExprINIT *init, Designator *d, Expr *e)
 	(void) avec_push(&init->items, item);
 }
 
+ExprGENERIC *exprGENERIC(Expr *expr)
+{
+	ExprGENERIC *t = __new(ExprGENERIC);
+	t->h.type = EXPR_GENERIC;
+	t->expr = expr;
+	avec_init(&t->items);
+	return t;
+}
+
+void exprGENERIC_append(ExprGENERIC *e, GENERICPair item)
+{
+	(void) avec_push(&e->items, item);
+}
+
 StmtBLOCK *stmtBLOCK()
 {
 	StmtBLOCK *t = __new(StmtBLOCK);

@@ -40,6 +40,8 @@ typedef struct Tree_ {
 #define EXPR(id, ...)
 		EXPR_CALL,
 		EXPR_INIT,
+		// C11
+		EXPR_GENERIC,
 
 #undef  TYPE
 #define TYPE(id, ...) TYPE_##id,
@@ -181,6 +183,22 @@ typedef struct ExprINIT_ {
 BEGIN_MANAGED
 ExprINIT *exprINIT();
 void exprINIT_append(ExprINIT *init, Designator *d, Expr *e);
+END_MANAGED
+
+typedef struct GENERICPair_ {
+	Type *type; // NULL => default
+	Expr *expr;
+} GENERICPair;
+typedef avec_t(GENERICPair) avec_gpair_t;
+typedef struct ExprGENERIC_ {
+	Expr h;
+	Expr *expr;
+	avec_gpair_t items;
+} ExprGENERIC;
+
+BEGIN_MANAGED
+ExprGENERIC *exprGENERIC(Expr *expr);
+void exprGENERIC_append(ExprGENERIC *e, GENERICPair pair);
 END_MANAGED
 
 typedef avec_t(Stmt*) avec_stmt_t;
