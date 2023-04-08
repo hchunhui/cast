@@ -432,6 +432,9 @@ LEX(sign, c == '+' || c == '-')
 LEX(fF, c == 'f' || c == 'F')
 LEX(lL, c == 'l' || c == 'L')
 
+LEX(bB, c == 'b' || c == 'B')
+LEX(bin, c == '0' || c == '1')
+
 typedef char (*lex_func_t)(Lexer *);
 
 #define LEX1(name, action) \
@@ -506,9 +509,9 @@ static void skip_spaces(Lexer *l)
 #define CTREE_ULONG_MAX  18446744073709551615ull
 #define CTREE_LLONG_MAX   9223372036854775807ull
 #define CTREE_ULLONG_MAX 18446744073709551615ull
-static void handle_int_cst(Lexer *l, int base)
+static void handle_int_cst(Lexer *l, int off, int base)
 {
-	unsigned long long v = strtoull(l->tok.data, NULL, base);
+	unsigned long long v = strtoull(l->tok.data + off, NULL, base);
 	bool is_unsigned = false;
 	bool is_long = false;
 	bool is_longlong = false;
@@ -553,7 +556,7 @@ static void handle_int_cst(Lexer *l, int base)
 	} else {
 		if (!is_long && !is_longlong && v <= CTREE_INT_MAX)
 			l->tok_type = TOK_INT_CST;
-		if (!is_long && !is_longlong && v <= CTREE_UINT_MAX)
+		else if (!is_long && !is_longlong && v <= CTREE_UINT_MAX)
 			l->tok_type = TOK_UINT_CST;
 		else if (is_long && v <= CTREE_LONG_MAX)
 			l->tok_type = TOK_LONG_CST;
@@ -686,7 +689,14 @@ void lexer_next(Lexer *l)
 		if (lex_one(l, lex_xX)) {
 			if (lex_many(l, lex_hex)) {
 				vec_push(&l->tok, 0);
-				handle_int_cst(l, 16);
+				handle_int_cst(l, 2, 16);
+			} else {
+				l->tok_type = TOK_ERROR;
+			}
+		} else if (lex_one(l, lex_bB)) { // gcc extension
+			if (lex_many(l, lex_bin)) {
+				vec_push(&l->tok, 0);
+				handle_int_cst(l, 2, 2);
 			} else {
 				l->tok_type = TOK_ERROR;
 			}
@@ -694,19 +704,19 @@ void lexer_next(Lexer *l)
 			if (lex_many(l, lex_digit)) {
 				if (!lex_float(l)) {
 					vec_push(&l->tok, 0);
-					handle_int_cst(l, 8);
+					handle_int_cst(l, 1, 8);
 				}
 			} else {
 				if (!lex_float(l)) {
 					vec_push(&l->tok, 0);
-					handle_int_cst(l, 10); // zero
+					handle_int_cst(l, 0, 10); // zero
 				}
 			}
 		}
 	} else if (lex_many(l, lex_digit)) {
 		if (!lex_float(l)) {
 			vec_push(&l->tok, 0);
-			handle_int_cst(l, 10);
+			handle_int_cst(l, 0, 10);
 		}
 	} else if (text_stream_peek(l->ts) == 0) {
 		l->tok_type = TOK_END;
