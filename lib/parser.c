@@ -1625,6 +1625,21 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct)
 			*pstmt = (Stmt *) decls;
 		return true;
 	}
+	if (match(p, TOK_STATICASSERT)) {
+		F_(match(p, '('), false);
+		Expr *expr;
+		const char *errmsg = NULL;
+		F_(expr = parse_conditional_expr(p), false);
+		if (match(p, ',')) {
+			F_(P == TOK_STRING_CST, false);
+			errmsg = get_and_next(p);
+		}
+		F_(match(p, ')'), false);
+		F_(match(p, ';'), false);
+		if (pstmt)
+			*pstmt = stmtSTATICASSERT(expr, errmsg);
+		return true;
+	}
 	Type *btype;
 	int old_count = p->next_count;
 	Declarator d = parse_type1(p, &btype);

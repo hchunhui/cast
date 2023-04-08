@@ -1190,6 +1190,17 @@ static void stmt_print(Stmt *h, int level)
 			print_quoted(clobber, strlen(clobber));
 			printf("\"");
 		}
+		break;
+	}
+	case STMT_STATICASSERT: {
+		StmtSTATICASSERT *s = (StmtSTATICASSERT *) h;
+		printf("_Static_assert(");
+		expr_print2(s->expr, false);
+		if (s->errmsg) {
+			printf(", \"");
+			print_quoted(s->errmsg, strlen(s->errmsg));
+			printf("\"");
+		}
 		printf(");\n");
 		break;
 	}

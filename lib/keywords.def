@@ -42,6 +42,7 @@ KWS("_Thread_local", TOK_THREADLOCAL);
 KWS("_Noreturn", TOK_NORETURN);
 KWS("_Alignof", TOK_ALIGNOF);
 KWS("_Generic", TOK_GENERIC);
+KWS("_Static_assert", TOK_STATICASSERT);
 
 // gcc extensions
 KWS("__int128", TOK_INT128);

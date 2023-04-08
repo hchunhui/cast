@@ -93,6 +93,7 @@ enum {
 	TOK_NORETURN,
 	TOK_ALIGNOF,
 	TOK_GENERIC,
+	TOK_STATICASSERT,
 
 	// gcc extensions
 	TOK_INT128,
