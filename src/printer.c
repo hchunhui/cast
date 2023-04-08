@@ -122,6 +122,15 @@ static void expr_print2(Expr *h, bool simple)
 	}
 }
 
+static void expr_print_cond(Expr *h, bool simple)
+{
+	if (h->type == EXPR_EXPR) {
+		lp(); expr_print(h, simple); rp();
+	} else {
+		expr_print(h, simple);
+	}
+}
+
 static void print_memlist(Expr *h)
 {
 	if (h->type == EXPR_MEM) {
@@ -940,7 +949,7 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_IF: {
 		StmtIF *s = (StmtIF *) h;
 		printf("if (");
-		expr_print(s->cond, false);
+		expr_print_cond(s->cond, false);
 		printf(")\n");
 		stmt_printb(s->body1, level + 1);
 		if (s->body2) {
@@ -954,7 +963,7 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_WHILE: {
 		StmtWHILE *s = (StmtWHILE *) h;
 		printf("while (");
-		expr_print(s->cond, false);
+		expr_print_cond(s->cond, false);
 		printf(")\n");
 		stmt_printb(s->body, level + 1);
 		printf("\n");
@@ -966,7 +975,7 @@ static void stmt_print(Stmt *h, int level)
 		stmt_printb(s->body, level + 1);
 		print_level(level);
 		printf("while (");
-		expr_print(s->cond, false);
+		expr_print_cond(s->cond, false);
 		printf(");\n");
 		break;
 	}
@@ -975,7 +984,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("for (");
 		if (s->init) expr_print(s->init, false);
 		printf("; ");
-		if (s->cond) expr_print(s->cond, false);
+		if (s->cond) expr_print_cond(s->cond, false);
 		printf("; ");
 		if (s->step) expr_print(s->step, false);
 		printf(")\n");
@@ -987,7 +996,7 @@ static void stmt_print(Stmt *h, int level)
 		StmtFOR99 *s = (StmtFOR99 *) h;
 		printf("for (");
 		stmt_print((Stmt *) s->init, 0);
-		if (s->cond) expr_print(s->cond, false);
+		if (s->cond) expr_print_cond(s->cond, false);
 		printf("; ");
 		if (s->step) expr_print(s->step, false);
 		printf(")\n");
