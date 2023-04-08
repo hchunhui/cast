@@ -38,7 +38,7 @@ ret = sp.call(arg)
 if ret != 0:
     exit(ret)
 
-if if_preproc:
+if if_preproc and ("-lang-asm" not in sys.argv):
     output = find_output(sys.argv)
     if output is None:
         exit(ret)

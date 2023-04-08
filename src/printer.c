@@ -10,6 +10,8 @@ static void decl_flags_print(unsigned int flags)
 		printf("extern ");
 	if (flags & DFLAG_STATIC)
 		printf("static ");
+	if (flags & DFLAG_REGISTER)
+		printf("register ");
 	if (flags & DFLAG_INLINE)
 		printf("inline ");
 	if (flags & DFLAG_THREADLOCAL)
@@ -601,6 +603,7 @@ static void expr_print(Expr *h, bool simple)
 	}
 	case EXPR_CHAR_CST: {
 		ExprCHAR_CST *e = (ExprCHAR_CST *) h;
+		if (e->wide) putchar('L');
 		putchar('\'');
 		switch(e->v) {
 		case '\\': printf("\\\\"); break;
@@ -624,6 +627,7 @@ static void expr_print(Expr *h, bool simple)
 	}
 	case EXPR_STRING_CST: {
 		ExprSTRING_CST *e = (ExprSTRING_CST *) h;
+		if (e->wide) putchar('L');
 		putchar('"');
 		print_quoted(e->v, e->len - 1);
 		putchar('"');
@@ -720,7 +724,8 @@ static void expr_print(Expr *h, bool simple)
 		ExprCOND *e = (ExprCOND *) h;
 		expr_print1(e->c, simple);
 		printf(" ? ");
-		expr_print1(e->a, simple);
+		if (e->a)
+			expr_print1(e->a, simple);
 		printf(" : ");
 		expr_print1(e->b, simple);
 		break;
@@ -866,6 +871,15 @@ static void expr_print(Expr *h, bool simple)
 			printf(": ");
 			expr_print2(item->expr, simple);
 		}
+		printf(")");
+		break;
+	}
+	case EXPR_TYPESCOMPATIBLE: {
+		ExprTYPESCOMPATIBLE *e = (ExprTYPESCOMPATIBLE *) h;
+		printf("__builtin_types_compatible_p( ");
+		type_print_vardecl(0, e->type1, "", simple);
+		printf(", ");
+		type_print_vardecl(0, e->type2, "", simple);
 		printf(")");
 		break;
 	}
@@ -1035,7 +1049,11 @@ static void stmt_print(Stmt *h, int level)
 		break;
 	}
 	case STMT_SKIP: {
-		printf("/*skip*/;\n");
+		StmtSKIP *s = (StmtSKIP *) h;
+		printf("/*skip*/");
+		if (s->attrs)
+			attrs_print(s->attrs);
+		printf(";\n");
 		break;
 	}
 	case STMT_BLOCK: {
@@ -1072,13 +1090,17 @@ static void stmt_print(Stmt *h, int level)
 		else
 			printf("// vardecl: /* unnamed */, type: ");
 		type_print_annot(s->type, true);
-		if (s->bitfield != -1)
-			printf(", bitfield : %d", s->bitfield);
+		if (s->bitfield) {
+			printf(", bitfield : ");
+			expr_print1(s->bitfield, true);
+		}
 		printf("\n");
 		print_level(level);
 		type_print_vardecl(s->flags, s->type, s->name, false);
-		if (s->bitfield != -1)
-			printf(" : %d", s->bitfield);
+		if (s->bitfield) {
+			printf(" : ");
+			expr_print1(s->bitfield, false);
+		}
 		if (s->ext.gcc_asm_name) {
 			printf(" __asm__(\"");
 			int len = strlen(s->ext.gcc_asm_name);
@@ -1159,7 +1181,15 @@ static void stmt_print(Stmt *h, int level)
 			printf(" goto");
 		printf(" (\"");
 		print_quoted(s->content, strlen(s->content));
-		printf("\" : ");
+		printf("\"");
+		if (s->outputs.length == 0 &&
+		    s->inputs.length == 0 &&
+		    s->clobbers.length == 0 &&
+		    s->gotolabels.length == 0) {
+			printf(");\n");
+			break;
+		}
+		printf(" : ");
 		ASMOper *oper;
 		avec_foreach_ptr(&s->outputs, oper, i) {
 			if (i) printf(", ");
@@ -1190,6 +1220,15 @@ static void stmt_print(Stmt *h, int level)
 			print_quoted(clobber, strlen(clobber));
 			printf("\"");
 		}
+		if (s->gotolabels.length) {
+			printf(" : ");
+			const char *label;
+			avec_foreach(&s->gotolabels, label, i) {
+				if (i) printf(", ");
+				printf("%s", label);
+			}
+		}
+		printf(");\n");
 		break;
 	}
 	case STMT_STATICASSERT: {

@@ -110,6 +110,7 @@ StmtASM *stmtASM(unsigned int flags, const char *content)
 	avec_init(&t->outputs);
 	avec_init(&t->inputs);
 	avec_init(&t->clobbers);
+	avec_init(&t->gotolabels);
 	return t;
 }
 
@@ -126,6 +127,11 @@ void stmtASM_append_input(StmtASM *s, ASMOper oper)
 void stmtASM_append_clobber(StmtASM *s, const char *name)
 {
 	(void) avec_push(&s->clobbers, name);
+}
+
+void stmtASM_append_gotolabels(StmtASM *s, const char *name)
+{
+	(void) avec_push(&s->gotolabels, name);
 }
 
 END_MANAGED

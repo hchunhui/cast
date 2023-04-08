@@ -39,7 +39,7 @@ static void patch_decl(Patch *ctx, Stmt *h)
 			}
 			stmtBLOCK_prepend(
 				s->args,
-				stmtVARDECL(0, "__myctx", t, NULL, -1,
+				stmtVARDECL(0, "__myctx", t, NULL, NULL,
 					    (Extension) {}));
 		}
 		break;
@@ -114,7 +114,8 @@ static void patch_call1_expr(Patch *ctx, Expr *h)
 	case EXPR_COND: {
 		ExprCOND *e = (ExprCOND *) h;
 		patch_call1_expr(ctx, e->c);
-		patch_call1_expr(ctx, e->a);
+		if (e->a)
+			patch_call1_expr(ctx, e->a);
 		patch_call1_expr(ctx, e->b);
 		break;
 	}

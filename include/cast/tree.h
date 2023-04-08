@@ -7,6 +7,7 @@
 #define DFLAG_INLINE 4
 #define DFLAG_THREADLOCAL 8
 #define DFLAG_NORETURN 16
+#define DFLAG_REGISTER 32
 #define DFLAG_MANAGED (1<<31)
 
 #define TFLAG_CONST 1
@@ -242,6 +243,7 @@ typedef struct StmtASM_ {
 	avec_asmoper_t outputs;
 	avec_asmoper_t inputs;
 	avec_str_t clobbers;
+	avec_str_t gotolabels;
 } StmtASM;
 
 BEGIN_MANAGED
@@ -249,6 +251,7 @@ StmtASM *stmtASM(unsigned int flags, const char *content);
 void stmtASM_append_output(StmtASM *s, ASMOper oper);
 void stmtASM_append_input(StmtASM *s, ASMOper oper);
 void stmtASM_append_clobber(StmtASM *s, const char *name);
+void stmtASM_append_gotolabels(StmtASM *s, const char *name);
 END_MANAGED
 
 struct EnumPair_ {

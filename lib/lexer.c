@@ -320,6 +320,7 @@ static unsigned int lex_escape(Lexer *l)
 		case 'r': N; return '\r';
 		case 't': N; return '\t';
 		case 'v': N; return '\v';
+		case 'e': N; return '\033'; // gcc extension
 		case '0': case '1': case '2': case '3':
 		case '4': case '5': case '6': case '7':
 			d = 0;
@@ -650,6 +651,30 @@ void lexer_next(Lexer *l)
 	if (lex_one(l, lex_alpha_)) {
 		lex_many(l, lex_alphadigit_);
 		vec_push(&l->tok, 0);
+
+		if (strcmp(l->tok.data, "L") == 0) {
+			// WIDE
+			if (lex_one_ignore(l, lex_quote)) {
+				vec_clear(&l->tok);
+				do {
+					if (!lex_stringbody(l, &l->tok) ||
+					    !lex_one_ignore(l, lex_quote)) {
+						l->tok_type = TOK_ERROR;
+						return;
+					}
+					skip_spaces(l);
+				} while (lex_one_ignore(l, lex_quote));
+				vec_push(&l->tok, 0);
+				l->tok_type = TOK_WSTRING_CST;
+				return;
+			}
+			int res = lex_char(l);
+			if (res != 256) {
+				l->tok_type = TOK_WCHAR_CST;
+				l->u.char_cst = res;
+				return;
+			}
+		}
 
 		int *type = map_get(&l->kws, l->tok.data);
 		if (type) {
