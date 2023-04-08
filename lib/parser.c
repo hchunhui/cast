@@ -107,6 +107,7 @@ static void parser_init(Parser *p, Lexer *l)
 		"_Float32", "_Float32x",
 		"_Float64", "_Float64x",
 		"_Float128", "_Float128x",
+		"__int128_t", "__uint128_t",
 		NULL
 	};
 	for (const char *const *t = gcc_builtin_types; *t; t++)
