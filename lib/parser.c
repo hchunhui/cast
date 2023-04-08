@@ -1584,6 +1584,19 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 				stmtDECLS_append(decls, stmtVARDECL(0, NULL, ntype, NULL, NULL,
 								    (Extension) {}));
 			}
+		} else if (btype->type == TYPE_ENUM) {
+			TypeENUM *b = (TypeENUM *) btype;
+			if (b->list) {
+				if (!b->tag) {
+					char buf[64];
+					sprintf(buf, "__anon_enum%d", p->counter++);
+					b->tag = __new_cstring(buf);
+				}
+				Type *ntype = typeENUM(b->tag, b->list, 0, b->attrs);
+				b->list = NULL;
+				stmtDECLS_append(decls, stmtVARDECL(0, NULL, ntype, NULL, NULL,
+								    (Extension) {}));
+			}
 		}
 		stmtDECLS_append(decls, decl1);
 		while (match(p, ',')) {
