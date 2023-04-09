@@ -463,10 +463,19 @@ static void type_print_vardecl(unsigned int flags, Type *type, const char *name,
 static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *args, const char *name, Attribute *attrs)
 {
 	Type *rt = type->rt;
+	/*
+	  attribute printing is tricky...
+	  consider:
+	  (1)    struct foo {...} __attribute__((...)) a, b; // type attr
+	  (2)    int __attribute__((...)) a, b; // b doesn't have attr
+	  (3)    __attribute__((...)) int a, b; // a and b have attr
+	*/
+
 	decl_flags_print(flags);
-	type_print_annot(type_get_basic(rt), false);
+	// safe, because we don't declare multiple variables in one line
 	if (attrs)
 		attrs_print(attrs);
+	type_print_annot(type_get_basic(rt), false);
 	printf(" ");
 	type_print_declarator1(rt);
 	printf("%s(", name);
