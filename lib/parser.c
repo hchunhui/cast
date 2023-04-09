@@ -453,16 +453,19 @@ static Expr *parse_unary_expr(Parser *p)
 			return exprSIZEOF(e);
 		}
 	case TOK_ALIGNOF: {
-		N; Type *t;
-		F(match(p, '('));
-		t = parse_type(p);
-		if (t) {
-			F(match(p, ')'));
-			return exprALIGNOF(t);
+		N; if (match(p, '(')) {
+			Type *t = parse_type(p);
+			if (t) {
+				F(match(p, ')'));
+				return exprALIGNOF(t);
+			} else {
+				Expr *e;
+				F(e = parse_postfix_expr_post(p, parse_parentheses_post(p), 4));
+				return exprALIGNOF(typeTYPEOF(e, 0));
+			}
 		} else {
 			Expr *e;
-			F(e = parse_expr(p));
-			F(match(p, ')'));
+			F(e = parse_unary_expr(p));
 			return exprALIGNOF(typeTYPEOF(e, 0));
 		}
 	}
@@ -1498,7 +1501,7 @@ static bool parse_asm_name(Parser *p, const char **name)
 	return true;
 }
 
-static Stmt *make_decl(Parser *p, Declarator d)
+static Stmt *make_decl(Parser *p, Declarator d, bool check)
 {
 	Stmt *decl1;
 	Extension ext = (Extension) {};
@@ -1522,6 +1525,8 @@ static Stmt *make_decl(Parser *p, Declarator d)
 		if (match(p, '=')) {
 			F(init = parse_initializer(p));
 		}
+		if (check)
+			F(bitfield || d.ident);
 		decl1 = stmtVARDECL(d.flags, d.ident, d.type, init, bitfield, ext);
 	}
 	return decl1;
@@ -1563,7 +1568,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 		decl1 = stmtTYPEDEF(d.ident, d.type,
 				    (Extension) {.gcc_attribute = attrs});
 	} else {
-		F(decl1 = make_decl(p, d), free_funscope(&d));
+		F(decl1 = make_decl(p, d, false), free_funscope(&d));
 	}
 
 	free_funscope(&d);
@@ -1607,10 +1612,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 			dd.funargs = NULL;
 			parse_attribute(p, &dd.attrs);
 			parse_declarator(p, &dd);
-			if (!dd.ident) {
-				return NULL;
-			}
-			if (!symset(p, dd.ident, symtype)) {
+			if (dd.ident && !symset(p, dd.ident, symtype)) {
 				return NULL;
 			}
 
@@ -1623,7 +1625,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 						      }),
 				  free_funscope(&dd));
 			} else {
-				F(decl1 = make_decl(p, dd), free_funscope(&dd));
+				F(decl1 = make_decl(p, dd, true), free_funscope(&dd));
 			}
 			free_funscope(&dd);
 			stmtDECLS_append(decls, decl1);
