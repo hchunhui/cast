@@ -1979,7 +1979,7 @@ Stmt *parse_stmt(Parser *p)
 		} else {
 			Stmt *decl;
 			// both decl and expr can start with __extension__
-			// match() is save because we always ignore the keyword
+			// match() is safe because we always ignore the keyword
 			match(p, TOK_EXTENSION);
 			if (parse_decl(p, &decl))
 				return decl;

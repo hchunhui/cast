@@ -243,7 +243,10 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_STRUCT: {
 		TypeSTRUCT *t = (TypeSTRUCT *) type;
 		printf("%s", t->is_union ? "union" : "struct");
-		if (t->attrs) attrs_print(t->attrs);
+		if (t->attrs) {
+			printf(" ");
+			attrs_print(t->attrs);
+		}
 		if (t->tag) printf(" %s", t->tag);
 		if (t->decls) {
 			if (simple) {
@@ -473,8 +476,10 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 
 	decl_flags_print(flags);
 	// safe, because we don't declare multiple variables in one line
-	if (attrs)
+	if (attrs) {
 		attrs_print(attrs);
+		printf(" ");
+	}
 	type_print_annot(type_get_basic(rt), false);
 	printf(" ");
 	type_print_declarator1(rt);
@@ -491,8 +496,10 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 				p1->type,
 				p1->name,
 				false);
-			if (p1->ext.gcc_attribute)
+			if (p1->ext.gcc_attribute) {
+				printf(" ");
 				attrs_print(p1->ext.gcc_attribute);
+			}
 		}
 	} else {
 		printf("void");
@@ -919,7 +926,7 @@ static void stmt_printb(Stmt *h, int level)
 
 static void attrs_print(Attribute *attrs)
 {
-	printf(" __attribute__((");
+	printf("__attribute__((");
 	for (Attribute *a = attrs; a; a = a->next) {
 		printf("%s", a->name);
 		if (a->args.length) {
@@ -1069,8 +1076,10 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_SKIP: {
 		StmtSKIP *s = (StmtSKIP *) h;
 		printf("/*skip*/");
-		if (s->attrs)
+		if (s->attrs) {
+			printf(" ");
 			attrs_print(s->attrs);
+		}
 		printf(";\n");
 		break;
 	}
@@ -1126,6 +1135,7 @@ static void stmt_print(Stmt *h, int level)
 			printf("\")");
 		}
 		if (s->ext.gcc_attribute) {
+			printf(" ");
 			attrs_print(s->ext.gcc_attribute);
 		}
 		if (s->init) {
@@ -1151,6 +1161,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("typedef ");
 		type_print_vardecl(0, s->type, s->name, false);
 		if (s->ext.gcc_attribute) {
+			printf(" ");
 			attrs_print(s->ext.gcc_attribute);
 		}
 		printf(";\n");
