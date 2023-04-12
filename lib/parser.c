@@ -1204,8 +1204,12 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			}
 			if (match(p, '{')) {
 				enter_scope(p);
+				int old_count = p->next_count;
 				decls = parse_decls(p, true);
+				int new_count = p->next_count;
 				leave_scope(p);
+				if (old_count != new_count && decls == NULL)
+					return false;
 				F_(match(p, '}'), false);
 				F_(parse_attribute(p, &attrs), false); // ambiguous
 			}
