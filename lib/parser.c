@@ -1674,6 +1674,12 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99)
 			*pstmt = (Stmt *) decls;
 		return true;
 	}
+	if (P == TOK_PP_PRAGMA_LINE) {
+		const char *line = get_and_next(p);
+		if (pstmt)
+			*pstmt = (Stmt *) stmtPRAGMA(line);
+		return true;
+	}
 	if (match(p, TOK_STATICASSERT)) {
 		F_(match(p, '('), false);
 		Expr *expr;

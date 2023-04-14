@@ -81,6 +81,7 @@ STMT(GOTO,  const char *, name)
 STMT(RETURN,Expr *, expr)
 STMT(SKIP, Attribute *, attrs)
 //STMT(BLOCK)
+STMT(PRAGMA, const char *, line)
 
 
 STMT(FUNDECL, unsigned int, flags, const char *, name, TypeFUN *, type, StmtBLOCK *, args, StmtBLOCK *, body, Extension, ext)

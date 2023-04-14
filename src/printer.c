@@ -947,6 +947,11 @@ static void attrs_print(Attribute *attrs)
 
 static void stmt_print(Stmt *h, int level)
 {
+	if (h->type == STMT_PRAGMA) {
+		StmtPRAGMA *s = (StmtPRAGMA *) h;
+		printf("\n#pragma %s\n", s->line);
+		return;
+	}
 	if (h->type != STMT_DECLS) {
 		if (level > 0 &&
 		    (h->type == STMT_CASE ||

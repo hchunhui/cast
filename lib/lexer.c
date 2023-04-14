@@ -467,7 +467,7 @@ LEXM(many, one)
 LEXM(many_temp, one_temp)
 LEXM(many_ignore, one_ignore)
 
-static void skip_spaces(Lexer *l)
+static int skip_spaces(Lexer *l)
 {
 	while (true) {
 		lex_many_ignore(l, lex_space);
@@ -486,6 +486,15 @@ static void skip_spaces(Lexer *l)
 							strncpy(l->path, l->tok_temp.data, 255);
 						}
 					}
+				} else if (lex_many_temp(l, lex_alpha)) {
+					vec_push(&l->tok_temp, 0);
+					if (strcmp(l->tok_temp.data, "pragma") == 0) {
+						lex_many_ignore(l, lex_space);
+						vec_clear(&l->tok_temp);
+						lex_many_temp(l, lex_not_newline);
+						vec_push(&l->tok_temp, 0);
+						return TOK_PP_PRAGMA_LINE;
+					}
 				}
 				lex_many_ignore(l, lex_not_newline);
 			} else {
@@ -501,6 +510,7 @@ static void skip_spaces(Lexer *l)
 			break;
 		}
 	}
+	return 0;
 }
 
 #define CTREE_INT_MAX              2147483647ull
@@ -649,8 +659,15 @@ static bool lex_float(Lexer *l)
 
 void lexer_next(Lexer *l)
 {
+	int tt;
 	vec_clear(&l->tok);
-	skip_spaces(l);
+	tt = skip_spaces(l);
+	if (tt) {
+		l->tok_type = tt;
+		vec_clear(&l->tok);
+		vec_extend(&l->tok, &l->tok_temp);
+		return;
+	}
 	if (lex_one(l, lex_alpha_)) {
 		lex_many(l, lex_alphadigit_);
 		vec_push(&l->tok, 0);
@@ -665,7 +682,10 @@ void lexer_next(Lexer *l)
 						l->tok_type = TOK_ERROR;
 						return;
 					}
-					skip_spaces(l);
+					if (skip_spaces(l) != 0) {
+						l->tok_type = TOK_ERROR;
+						return;
+					}
 				} while (lex_one_ignore(l, lex_quote));
 				vec_push(&l->tok, 0);
 				l->tok_type = TOK_WSTRING_CST;
@@ -737,7 +757,10 @@ void lexer_next(Lexer *l)
 					l->tok_type = TOK_ERROR;
 					return;
 				}
-				skip_spaces(l);
+				if (skip_spaces(l) != 0) {
+					l->tok_type == TOK_ERROR;
+					return;
+				}
 			} while (lex_one_ignore(l, lex_quote));
 			vec_push(&l->tok, 0);
 			l->tok_type = TOK_STRING_CST;

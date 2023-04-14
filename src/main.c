@@ -303,6 +303,9 @@ static void patch_call1_stmt(Patch *ctx, Stmt *h)
 	case STMT_STATICASSERT: {
 		break;
 	}
+	case STMT_PRAGMA: {
+		break;
+	}
 	default:
 		abort();
 	}
