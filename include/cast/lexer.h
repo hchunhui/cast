@@ -97,6 +97,7 @@ enum {
 	TOK_ALIGNOF,
 	TOK_GENERIC,
 	TOK_STATICASSERT,
+	TOK_ALIGNAS,
 
 	// gcc extensions
 	TOK_INT128,

@@ -44,6 +44,7 @@ KWS("_Noreturn", TOK_NORETURN);
 KWS("_Alignof", TOK_ALIGNOF);
 KWS("_Generic", TOK_GENERIC);
 KWS("_Static_assert", TOK_STATICASSERT);
+KWS("_Alignas", TOK_ALIGNAS);
 
 // gcc extensions
 KWS("__int128", TOK_INT128);

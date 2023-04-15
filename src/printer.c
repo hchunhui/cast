@@ -1128,6 +1128,16 @@ static void stmt_print(Stmt *h, int level)
 		}
 		printf("\n");
 		print_level(level);
+		if (s->ext.c11_alignas) {
+			printf("_Alignas(");
+			if (s->ext.c11_alignas->type == EXPR_ALIGNOF) {
+				ExprALIGNOF *e = (ExprALIGNOF *) (s->ext.c11_alignas);
+				type_print_vardecl(0, e->t, "", false);
+			} else {
+				expr_print(s->ext.c11_alignas, false);
+			}
+			printf(") ");
+		}
 		type_print_vardecl(s->flags, s->type, s->name, false);
 		if (s->bitfield) {
 			printf(" : ");

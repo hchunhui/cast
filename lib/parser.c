@@ -829,6 +829,7 @@ typedef struct {
 	StmtBLOCK *funargs;
 	struct scope_item *funscope;
 	Attribute *attrs;
+	Expr *c11_alignas;
 } Declarator;
 
 static void init_declarator(Declarator *pd)
@@ -840,6 +841,7 @@ static void init_declarator(Declarator *pd)
 	pd->funargs = NULL;
 	pd->funscope = NULL;
 	pd->attrs = NULL;
+	pd->c11_alignas = NULL;
 }
 
 static void free_funscope(Declarator *pd)
@@ -1121,6 +1123,19 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			N; pd->flags |= DFLAG_REGISTER; break;
 		case TOK_THREADLOCAL:
 			N; pd->flags |= DFLAG_THREADLOCAL; break;
+		case TOK_ALIGNAS: {
+			N;
+			F_(match(p, '('), false);
+			Type *t = parse_type(p);
+			if (t) {
+				pd->c11_alignas = exprALIGNOF(t);
+			} else {
+				Expr *e;
+				F_(pd->c11_alignas = parse_conditional_expr(p), false);
+			}
+			F_(match(p, ')'), false);
+			break;
+		}
 		// type-qualifier
 		case TOK_CONST:
 			N; tflags |= TFLAG_CONST; break;
@@ -1525,6 +1540,7 @@ static Stmt *make_decl(Parser *p, Declarator d, bool check)
 		}
 		ext.gcc_attribute = d.attrs;
 		F(parse_attribute(p, &ext.gcc_attribute));
+		ext.c11_alignas = d.c11_alignas;
 		Expr *init = NULL;
 		if (match(p, '=')) {
 			F(init = parse_initializer(p));
