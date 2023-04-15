@@ -1187,13 +1187,17 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			N; is_float = 1; break;
 		case TOK_DOUBLE:
 			N; is_double = 1; break;
+		case TOK_COMPLEX:
+			N; tflags |= TFLAG_COMPLEX; break;
+		case TOK_IMAGINARY:
+			N; tflags |= TFLAG_IMAGINARY; break;
 		case TOK_INT128:
 			N; is_int128 = 1; break;
 		case TOK_IDENT: {
 			int sv = symlookup(p, PS);
 			if (sv == SYM_TYPE) {
 				int xcount = is_int + is_bool + is_char + is_float + is_double + is_void +
-					is_int128 +
+					is_int128 + (tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY)) +
 					is_signed + is_unsigned + is_short + long_count;
 				if (pd->type == NULL && xcount == 0) {
 					const char *name = get_and_next(p);
@@ -1294,11 +1298,12 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			break;
 		}
 	}
+	F_(!((tflags & TFLAG_COMPLEX) && (tflags & TFLAG_IMAGINARY)), false);
 
 	int tcount = is_int + is_bool + is_char + is_float + is_double + is_void + is_int128;
 	int scount = is_signed + is_unsigned;
 	if (pd->type) {
-		if (tcount + scount + is_short + long_count) {
+		if (tcount + scount + is_short + long_count || (tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY))) {
 			pd->type = NULL;
 		}
 	} else {
@@ -1309,6 +1314,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			} else if (long_count == 0) {
 				if (tcount || scount)
 					pd->type = is_unsigned ? typeUINT(tflags) : typeINT(tflags);
+				else if (tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY))
+					pd->type = typeDOUBLE(tflags);
 			} else if (long_count == 1) {
 				pd->type = is_unsigned ? typeULONG(tflags) : typeLONG(tflags);
 			} else if (long_count == 2) {
@@ -1316,7 +1323,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			}
 		} else if (tcount == 1) {
 			if (is_short + long_count == 0) {
-				if (is_char) {
+				if (is_char && !(tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY))) {
 					if (is_signed)
 						pd->type = typeSCHAR(tflags);
 					else if (is_unsigned)
@@ -1326,7 +1333,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 				} else if (is_int128) {
 					pd->type = is_unsigned ? typeUINT128(tflags) : typeINT128(tflags);
 				} else if (scount == 0) {
-					if (is_bool)
+					if (is_bool && !(tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY)))
 						pd->type = typeBOOL(tflags);
 					else if (is_float)
 						pd->type = typeFLOAT(tflags);

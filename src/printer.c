@@ -64,6 +64,10 @@ static void type_flags_print(Type *t)
 		printf("volatile ");
 	if (flags & TFLAG_ATOMIC)
 		printf("_Atomic ");
+	if (flags & TFLAG_COMPLEX)
+		printf("_Complex ");
+	if (flags & TFLAG_IMAGINARY)
+		printf("_Imaginary ");
 }
 
 static void attrs_print(Attribute *attrs);

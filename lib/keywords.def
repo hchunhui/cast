@@ -35,7 +35,8 @@ KWS("const", TOK_CONST);
 KWS("float", TOK_FLOAT);
 KWS("double", TOK_DOUBLE);
 KWS("_Bool", TOK_BOOL);
-
+KWS("_Complex", TOK_COMPLEX);
+KWS("_Imaginary", TOK_IMAGINARY);
 
 // C11
 KWS("_Atomic", TOK_ATOMIC);

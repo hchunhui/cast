@@ -15,6 +15,8 @@
 #define TFLAG_RESTRICT 4
 #define TFLAG_ARRAY_STATIC 8
 #define TFLAG_ATOMIC 16
+#define TFLAG_COMPLEX 32
+#define TFLAG_IMAGINARY 64
 
 typedef struct EnumList_ EnumList;
 
