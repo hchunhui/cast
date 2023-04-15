@@ -203,7 +203,7 @@ static int lex_punct(Lexer *l)
 		}
 		return c;
 	case '<':
-		// < <= << <<=
+		// < <= << <<= <% <:
 		N; d = P;
 		if (d == '=') {
 			N; return TOK_LE;
@@ -213,6 +213,10 @@ static int lex_punct(Lexer *l)
 				N; return TOK_ASSIGNBSHL;
 			}
 			return TOK_BSHL;
+		} else if (d == '%') {
+			N; return '{';
+		} else if (d == ':') {
+			N; return '[';
 		}
 		return c;
 	case '>':
@@ -263,9 +267,12 @@ static int lex_punct(Lexer *l)
 		}
 		return c;
 	case '%':
+		// % %= %>
 		N; d = P;
 		if (d == '=') {
 			N; return TOK_ASSIGNMOD;
+		} else if (d == '>') {
+			N; return '}';
 		}
 		return c;
 	case '=':
@@ -288,14 +295,19 @@ static int lex_punct(Lexer *l)
 		} else {
 			return '.';
 		}
+	case ':':
+		// : :>
+		N; d = P;
+		if (d == '>') {
+			N; return ']';
+		}
+		return c;
 	case '~':
 	case '(': case ')':
 	case '[': case ']':
 	case '{': case '}':
 	case ',':
 	case ';':
-	case ':':
-	case '#':
 	case '?':
 		N; return c;
 	default:
@@ -428,6 +440,7 @@ LEX(xX, c == 'x' || c == 'X')
 LEX(hex, HEX)
 LEX(dot, c == '.')
 LEX(eE, c == 'e' || c == 'E')
+LEX(pP, c == 'p' || c == 'P')
 LEX(sign, c == '+' || c == '-')
 LEX(fF, c == 'f' || c == 'F')
 LEX(lL, c == 'l' || c == 'L')
@@ -657,6 +670,33 @@ static bool lex_float(Lexer *l)
 	}
 }
 
+static bool lex_0xfloat(Lexer *l)
+{
+	if (lex_one(l, lex_dot)) {
+		lex_many(l, lex_hex);
+		if (lex_one(l, lex_pP)) {
+			lex_one(l, lex_sign);
+			if (lex_many(l, lex_digit)) {
+				vec_push(&l->tok, 0);
+				handle_float_cst(l);
+				return true;
+			}
+		}
+		l->tok_type = TOK_ERROR;
+		return true;
+	} else if (lex_one(l, lex_pP)) {
+		lex_one(l, lex_sign);
+		if (lex_many(l, lex_digit)) {
+			vec_push(&l->tok, 0);
+			handle_float_cst(l);
+			return true;
+		}
+		l->tok_type = TOK_ERROR;
+		return true;
+	}
+	return false;
+}
+
 void lexer_next(Lexer *l)
 {
 	int tt;
@@ -708,8 +748,10 @@ void lexer_next(Lexer *l)
 	} else if (lex_one(l, lex_0)) {
 		if (lex_one(l, lex_xX)) {
 			if (lex_many(l, lex_hex)) {
-				vec_push(&l->tok, 0);
-				handle_int_cst(l, 2, 16);
+				if (!lex_0xfloat(l)) {
+					vec_push(&l->tok, 0);
+					handle_int_cst(l, 2, 16);
+				}
 			} else {
 				l->tok_type = TOK_ERROR;
 			}
