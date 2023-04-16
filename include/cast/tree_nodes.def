@@ -55,6 +55,7 @@ EXPR(SIZEOF,     Expr *, e)
 EXPR(SIZEOFT,    Type *, t)
 EXPR(ALIGNOF,    Type *, t)
 //EXPR(INIT)
+//EXPR(GENERIC)
 
 EXPR(STMT,       StmtBLOCK *, s)
 
@@ -83,16 +84,14 @@ STMT(SKIP, Attribute *, attrs)
 //STMT(BLOCK)
 STMT(PRAGMA, const char *, line)
 
-
 STMT(FUNDECL, unsigned int, flags, const char *, name, TypeFUN *, type, StmtBLOCK *, args, StmtBLOCK *, body, Extension, ext)
 STMT(VARDECL, unsigned int, flags, const char *, name, Type *,    type, Expr *,      init, Expr *, bitfield, Extension, ext)
 STMT(TYPEDEF, const char *, name, Type *,    type, Extension, ext)
-STMT(STRUCT,  const char *, name, Type *,    type)
-STMT(UNION,   const char *, name, Type *,    type)
-STMT(ENUM,    const char *, name, Type *,    type)
+//STMT(DECLS)
 
 // gcc extensions
 STMT(GOTOADDR, Expr *, expr)
 STMT(LABELDECL, const char *, name)
 STMT(CASERANGE, Expr *, low, Expr *, high, Stmt *, stmt)
 STMT(STATICASSERT, Expr *, expr, const char *, errmsg)
+//STMT(ASM)

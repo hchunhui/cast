@@ -21,7 +21,7 @@ def find_preproc(argv):
 def filter_argv(argv):
     o = []
     for i in argv:
-        if not i.startswith('--cast'):
+        if not i.startswith('--cast') and i != "-Werror":
             o.append(i)
     return o
 

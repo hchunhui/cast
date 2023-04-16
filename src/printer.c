@@ -587,6 +587,7 @@ static void print_quoted(const char *v, int len)
 		case '\n': printf("\\n"); break;
 		case '\r': printf("\\r"); break;
 		case '\t': printf("\\t"); break;
+		case '?': printf("\\\?"); break;
 		default:
 			if (v[i] >= 0 && v[i] < 32) {
 				printf("\"\"\\x%x\"\"", v[i]); break;
