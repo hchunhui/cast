@@ -307,30 +307,6 @@ static void type_print_annot(Type *type, bool simple)
 static Type* type_get_basic(Type *type)
 {
 	switch(type->type) {
-	case TYPE_VOID:
-	case TYPE_INT:
-	case TYPE_SHORT:
-	case TYPE_LONG:
-	case TYPE_LLONG:
-	case TYPE_CHAR:
-	case TYPE_SCHAR:
-	case TYPE_UINT:
-	case TYPE_USHORT:
-	case TYPE_ULONG:
-	case TYPE_ULLONG:
-	case TYPE_UCHAR:
-	case TYPE_BOOL:
-	case TYPE_FLOAT:
-	case TYPE_DOUBLE:
-	case TYPE_LDOUBLE:
-	case TYPE_INT128:
-	case TYPE_UINT128:
-	case TYPE_TYPEDEF:
-	case TYPE_STRUCT:
-	case TYPE_ENUM:
-	case TYPE_TYPEOF:
-	case TYPE_AUTO:
-		return type;
 	case TYPE_FUN:
 		return type_get_basic(((TypeFUN *) type)->rt);
 	case TYPE_PTR:
@@ -338,35 +314,13 @@ static Type* type_get_basic(Type *type)
 	case TYPE_ARRAY:
 		return type_get_basic(((TypeARRAY *) type)->t);
 	default:
-		assert(false);
+		return type;
 	}
 }
 
 static void type_print_declarator1(Type *type)
 {
 	switch(type->type) {
-	case TYPE_VOID:
-	case TYPE_INT:
-	case TYPE_SHORT:
-	case TYPE_LONG:
-	case TYPE_LLONG:
-	case TYPE_CHAR:
-	case TYPE_SCHAR:
-	case TYPE_UINT:
-	case TYPE_USHORT:
-	case TYPE_ULONG:
-	case TYPE_ULLONG:
-	case TYPE_UCHAR:
-	case TYPE_BOOL:
-	case TYPE_FLOAT:
-	case TYPE_DOUBLE:
-	case TYPE_LDOUBLE:
-	case TYPE_INT128:
-	case TYPE_UINT128:
-	case TYPE_TYPEDEF:
-	case TYPE_TYPEOF:
-	case TYPE_AUTO:
-		return;
 	case TYPE_FUN:
 		type_print_declarator1(((TypeFUN *) type)->rt);
 		return;
@@ -389,28 +343,6 @@ static void type_print_vardecl(unsigned int flags, Type *type, const char *name,
 static void type_print_declarator2(Type *type)
 {
 	switch(type->type) {
-	case TYPE_VOID:
-	case TYPE_INT:
-	case TYPE_SHORT:
-	case TYPE_LONG:
-	case TYPE_LLONG:
-	case TYPE_CHAR:
-	case TYPE_SCHAR:
-	case TYPE_UINT:
-	case TYPE_USHORT:
-	case TYPE_ULONG:
-	case TYPE_ULLONG:
-	case TYPE_UCHAR:
-	case TYPE_BOOL:
-	case TYPE_FLOAT:
-	case TYPE_DOUBLE:
-	case TYPE_LDOUBLE:
-	case TYPE_INT128:
-	case TYPE_UINT128:
-	case TYPE_TYPEDEF:
-	case TYPE_TYPEOF:
-	case TYPE_AUTO:
-		return;
 	case TYPE_FUN:
 		printf("(");
 		Type *p;
@@ -552,25 +484,6 @@ static const char *bopname(ExprBinOp op)
 	case EXPR_OP_ASSIGNBXOR: return "^=";
 	case EXPR_OP_ASSIGNBSHL: return "<<=";
 	case EXPR_OP_ASSIGNBSHR: return ">>=";
-	default: abort();
-	}
-}
-
-static const char *uopname(ExprUnOp op)
-{
-	switch (op) {
-	case EXPR_OP_NEG: return "neg";
-	case EXPR_OP_POS: return "pos";
-	case EXPR_OP_NOT: return "!";
-	case EXPR_OP_BNOT: return "~";
-
-	case EXPR_OP_ADDROF: return "addrof";
-	case EXPR_OP_DEREF: return "deref";
-
-	case EXPR_OP_PREINC: return "preinc";
-	case EXPR_OP_POSTINC: return "postinc";
-	case EXPR_OP_PREDEC: return "predec";
-	case EXPR_OP_POSTDEC: return "postdec";
 	default: abort();
 	}
 }
