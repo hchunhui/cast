@@ -1,6 +1,6 @@
 TOPDIR = ..
 LIB = libcast.a
-CSRCS = vec.c map.c parser.c lexer.c tree.c allocator.c
+CSRCS = vec.c map.c parser.c lexer.c tree.c allocator.c printer.c
 
 CFLAGS = -I${TOPDIR}/include/cast -g -O2
 LDFLAGS =

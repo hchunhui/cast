@@ -1,8 +1,8 @@
+#include "printer.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
-#include <cast/parser.h>
 
 static void decl_flags_print(unsigned int flags)
 {
@@ -1210,7 +1210,7 @@ static void stmt_print(Stmt *h, int level)
 	}
 }
 
-void toplevel_print(StmtBLOCK *s)
+void print_translation_unit(StmtBLOCK *s)
 {
 	Stmt *p;
 	int i;

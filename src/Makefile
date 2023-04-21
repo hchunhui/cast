@@ -1,6 +1,6 @@
 TOPDIR = ..
 PROG = cast-pp
-CSRCS = main.c printer.c
+CSRCS = main.c
 OBJS += ${TOPDIR}/lib/libcast.a
 
 CFLAGS = -I ${TOPDIR} -I ${TOPDIR}/include -g -O2

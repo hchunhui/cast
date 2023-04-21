@@ -4,6 +4,7 @@
 #include <cast/allocator.h>
 #include <cast/lexer.h>
 #include <cast/parser.h>
+#include <cast/printer.h>
 #include <cast/map.h>
 
 typedef struct {
@@ -366,8 +367,7 @@ static void patch(StmtBLOCK *s)
 }
 END_MANAGED
 
-void toplevel_print(StmtBLOCK *s);
-int toplevel_test(const char *file)
+static int main1(const char *file)
 {
 	int ret = 0;
 	TextStream *ts = text_stream_new(file);
@@ -387,7 +387,7 @@ int toplevel_test(const char *file)
 #else
 		patch(translation_unit);
 #endif
-		toplevel_print(translation_unit);
+		print_translation_unit(translation_unit);
 	} else {
 		fprintf(stderr, "%s:%d: syntax error\n",
 			lexer_report_path(l),
@@ -405,5 +405,5 @@ int toplevel_test(const char *file)
 
 int main(int argc, char *argv[])
 {
-	return toplevel_test(argc == 1 ? "-" : argv[1]);
+	return main1(argc == 1 ? "-" : argv[1]);
 }
