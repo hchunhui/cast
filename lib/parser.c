@@ -830,6 +830,7 @@ typedef struct {
 	struct scope_item *funscope;
 	Attribute *attrs;
 	Expr *c11_alignas;
+	bool old_fundecl;
 } Declarator;
 
 static void init_declarator(Declarator *pd)
@@ -842,6 +843,7 @@ static void init_declarator(Declarator *pd)
 	pd->funscope = NULL;
 	pd->attrs = NULL;
 	pd->c11_alignas = NULL;
+	pd->old_fundecl = false;
 }
 
 static void free_funscope(Declarator *pd)
@@ -885,6 +887,8 @@ static void fix_type(Declarator *d, Type *btype)
 	}
 	d->type = tnew;
 }
+
+#include "parser-legacy.inc"
 
 static unsigned int parse_type_qualifier(Parser *p)
 {
@@ -966,7 +970,12 @@ static int parse_declarator0(Parser *p, Declarator *d)
 			TypeFUN *n = typeFUN(d->type);
 			if (match(p, ')')) {
 				d->type = &n->h;
+				d->old_fundecl = true;
 			} else {
+				int ret = parse_oldfunargs1(p, d, n);
+				F(ret);
+				if (ret > 0)
+					return 1;
 				enter_scope(p);
 				StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
 				Declarator d1 = parse_type1(p, NULL, NULL);
@@ -1572,6 +1581,9 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 			}
 		}
 	}
+
+	if (d.type->type == TYPE_FUN && d.old_fundecl)
+		F(parse_oldfunargs2(p, &d));
 
 	if (d.type->type == TYPE_FUN && P == '{') {
 		F(!is_typedef);
