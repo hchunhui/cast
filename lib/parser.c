@@ -1066,29 +1066,14 @@ static StmtBLOCK *parse_decls(Parser *p, bool in_struct);
 static void type_set_tflags(Type *t, unsigned int tflags)
 {
 	switch (t->type) {
-	case TYPE_VOID:(((TypeVOID *) t)->flags) |= tflags; break;
-	case TYPE_INT: (((TypeINT *) t)->flags) |= tflags; break;
-	case TYPE_SHORT: (((TypeSHORT *) t)->flags) |= tflags; break;
-	case TYPE_LONG: (((TypeLONG *) t)->flags) |= tflags; break;
-	case TYPE_LLONG: (((TypeLLONG *) t)->flags) |= tflags; break;
-	case TYPE_UINT: (((TypeUINT *) t)->flags) |= tflags; break;
-	case TYPE_USHORT: (((TypeUSHORT *) t)->flags) |= tflags; break;
-	case TYPE_ULONG: (((TypeULONG *) t)->flags) |= tflags; break;
-	case TYPE_ULLONG: (((TypeULLONG *) t)->flags) |= tflags; break;
-	case TYPE_BOOL: (((TypeBOOL *) t)->flags) |= tflags; break;
-	case TYPE_FLOAT: (((TypeFLOAT *) t)->flags) |= tflags; break;
-	case TYPE_LDOUBLE: (((TypeLDOUBLE *) t)->flags) |= tflags; break;
-	case TYPE_DOUBLE: (((TypeDOUBLE *) t)->flags) |= tflags; break;
-	case TYPE_CHAR: (((TypeCHAR *) t)->flags) |= tflags; break;
-	case TYPE_UCHAR: (((TypeUCHAR *) t)->flags) |= tflags; break;
+	case TYPE_VOID: (((TypeVOID *) t)->flags) |= tflags; break;
+	case TYPE_PRIM: (((TypePRIM *) t)->flags) |= tflags; break;
 	case TYPE_PTR: (((TypePTR *) t)->flags) |= tflags; break;
 	case TYPE_ARRAY: (((TypeARRAY *) t)->flags) |= tflags; break;
 	case TYPE_FUN: break;
 	case TYPE_TYPEDEF: (((TypeTYPEDEF *) t)->flags) |= tflags; break;
 	case TYPE_STRUCT:  (((TypeSTRUCT *) t)->flags) |= tflags; break;
 	case TYPE_ENUM: (((TypeENUM *) t)->flags) |= tflags; break;
-	case TYPE_INT128: (((TypeINT128 *) t)->flags) |= tflags; break;
-	case TYPE_UINT128: (((TypeUINT128 *) t)->flags) |= tflags; break;
 	case TYPE_TYPEOF: (((TypeTYPEOF *) t)->flags) |= tflags; break;
 	case TYPE_AUTO: (((TypeAUTO *) t)->flags) |= tflags; break;
 	default:
@@ -1319,41 +1304,41 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 		if (tcount == 0 || tcount == 1 && is_int) {
 			if (is_short) {
 				if (long_count == 0)
-					pd->type = is_unsigned ? typeUSHORT(tflags) : typeSHORT(tflags);
+					pd->type = is_unsigned ? typePRIM(PT_USHORT, tflags) : typePRIM(PT_SHORT, tflags);
 			} else if (long_count == 0) {
 				if (tcount || scount)
-					pd->type = is_unsigned ? typeUINT(tflags) : typeINT(tflags);
+					pd->type = is_unsigned ? typePRIM(PT_UINT, tflags) : typePRIM(PT_INT, tflags);
 				else if (tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY))
-					pd->type = typeDOUBLE(tflags);
+					pd->type = typePRIM(PT_DOUBLE, tflags);
 			} else if (long_count == 1) {
-				pd->type = is_unsigned ? typeULONG(tflags) : typeLONG(tflags);
+				pd->type = is_unsigned ? typePRIM(PT_ULONG, tflags) : typePRIM(PT_LONG, tflags);
 			} else if (long_count == 2) {
-				pd->type = is_unsigned ? typeULLONG(tflags) : typeLLONG(tflags);
+				pd->type = is_unsigned ? typePRIM(PT_ULLONG, tflags) : typePRIM(PT_LLONG, tflags);
 			}
 		} else if (tcount == 1) {
 			if (is_short + long_count == 0) {
 				if (is_char && !(tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY))) {
 					if (is_signed)
-						pd->type = typeSCHAR(tflags);
+						pd->type = typePRIM(PT_SCHAR, tflags);
 					else if (is_unsigned)
-						pd->type = typeUCHAR(tflags);
+						pd->type = typePRIM(PT_UCHAR, tflags);
 					else
-						pd->type = typeCHAR(tflags);
+						pd->type = typePRIM(PT_CHAR, tflags);
 				} else if (is_int128) {
-					pd->type = is_unsigned ? typeUINT128(tflags) : typeINT128(tflags);
+					pd->type = is_unsigned ? typePRIM(PT_UINT128, tflags) : typePRIM(PT_INT128, tflags);
 				} else if (scount == 0) {
 					if (is_bool && !(tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY)))
-						pd->type = typeBOOL(tflags);
+						pd->type = typePRIM(PT_BOOL, tflags);
 					else if (is_float)
-						pd->type = typeFLOAT(tflags);
+						pd->type = typePRIM(PT_FLOAT, tflags);
 					else if (is_double)
-						pd->type = typeDOUBLE(tflags);
+						pd->type = typePRIM(PT_DOUBLE, tflags);
 					else if (is_void)
 						pd->type = typeVOID(tflags);
 				}
 			} else {
 				if (is_double && long_count == 1 && !is_short)
-					pd->type = typeLDOUBLE(tflags);
+					pd->type = typePRIM(PT_LDOUBLE, tflags);
 			}
 		}
 	}

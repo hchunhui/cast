@@ -64,6 +64,28 @@ typedef Tree Expr;
 typedef Tree Type;
 
 typedef enum {
+	PT_INT,
+	PT_LONG,
+	PT_SHORT,
+	PT_CHAR,
+	PT_SCHAR,
+	PT_LLONG,
+	PT_UINT,
+	PT_ULONG,
+	PT_USHORT,
+	PT_UCHAR,
+	PT_ULLONG,
+	PT_FLOAT,
+	PT_DOUBLE,
+	PT_LDOUBLE,
+	PT_BOOL,
+
+	// gcc extensions
+	PT_INT128,
+	PT_UINT128,
+} PTKind;
+
+typedef enum {
 	EXPR_OP_NEG,
 	EXPR_OP_POS,
 	EXPR_OP_NOT,

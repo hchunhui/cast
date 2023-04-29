@@ -3,7 +3,7 @@ static int parse_oldfunargs1(Parser *p, Declarator *d, TypeFUN *n)
 	if (P == TOK_IDENT && symlookup(p, PS) != SYM_TYPE) {
 		enter_scope(p);
 		StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
-		Type *t = typeINT(0);
+		Type *t = typePRIM(PT_INT, 0);
 		if (funargs) {
 			const char *id = get_and_next(p);
 			stmtBLOCK_append(funargs, stmtVARDECL(0, id, t, NULL, NULL,

@@ -27,29 +27,13 @@ static void type_flags_print(Type *t)
 	unsigned int flags = 0;
 	switch(t->type) {
 	case TYPE_VOID: flags = ((TypeVOID *) t)->flags; break;
-	case TYPE_INT: flags = ((TypeINT *) t)->flags; break;
-	case TYPE_SHORT: flags = ((TypeSHORT *) t)->flags; break;
-	case TYPE_LONG: flags = ((TypeLONG *) t)->flags; break;
-	case TYPE_LLONG: flags = ((TypeLLONG *) t)->flags; break;
-	case TYPE_UINT: flags = ((TypeUINT *) t)->flags; break;
-	case TYPE_USHORT: flags = ((TypeUSHORT *) t)->flags; break;
-	case TYPE_ULONG: flags = ((TypeULONG *) t)->flags; break;
-	case TYPE_ULLONG: flags = ((TypeULLONG *) t)->flags; break;
-	case TYPE_BOOL: flags = ((TypeBOOL *) t)->flags; break;
-	case TYPE_FLOAT: flags = ((TypeFLOAT *) t)->flags; break;
-	case TYPE_LDOUBLE: flags = ((TypeLDOUBLE *) t)->flags; break;
-	case TYPE_DOUBLE: flags = ((TypeDOUBLE *) t)->flags; break;
-	case TYPE_CHAR: flags = ((TypeCHAR *) t)->flags; break;
-	case TYPE_SCHAR: flags = ((TypeSCHAR *) t)->flags; break;
-	case TYPE_UCHAR: flags = ((TypeUCHAR *) t)->flags; break;
+	case TYPE_PRIM: flags = ((TypePRIM *) t)->flags; break;
 	case TYPE_PTR: flags = ((TypePTR *) t)->flags; break;
 	case TYPE_ARRAY: flags = ((TypeARRAY *) t)->flags; break;
 	case TYPE_FUN: break;
 	case TYPE_TYPEDEF: flags = ((TypeTYPEDEF *) t)->flags; break;
 	case TYPE_STRUCT:  flags = ((TypeSTRUCT *) t)->flags; break;
 	case TYPE_ENUM: flags = ((TypeENUM *) t)->flags; break;
-	case TYPE_INT128: flags = ((TypeINT128 *) t)->flags; break;
-	case TYPE_UINT128: flags = ((TypeUINT128 *) t)->flags; break;
 	case TYPE_TYPEOF: flags = ((TypeTYPEOF *) t)->flags; break;
 	case TYPE_AUTO: flags = ((TypeAUTO *) t)->flags; break;
 	default:
@@ -161,57 +145,64 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_VOID:
 		printf("void");
 		break;
-	case TYPE_INT:
-		printf("int");
+	case TYPE_PRIM: {
+		switch(((TypePRIM *) type)->kind) {
+		case PT_INT:
+			printf("int");
+			break;
+		case PT_SHORT:
+			printf("short");
+			break;
+		case PT_LONG:
+			printf("long");
+			break;
+		case PT_LLONG:
+			printf("long long");
+			break;
+		case PT_UINT:
+			printf("unsigned int");
+			break;
+		case PT_USHORT:
+			printf("unsigned short");
+			break;
+		case PT_ULONG:
+			printf("unsigned long");
+			break;
+		case PT_ULLONG:
+			printf("unsigned long long");
+			break;
+		case PT_BOOL:
+			printf("_Bool");
+			break;
+		case PT_FLOAT:
+			printf("float");
+			break;
+		case PT_LDOUBLE:
+			printf("long double");
+			break;
+		case PT_DOUBLE:
+			printf("double");
+			break;
+		case PT_CHAR:
+			printf("char");
+			break;
+		case PT_SCHAR:
+			printf("signed char");
+			break;
+		case PT_UCHAR:
+			printf("unsigned char");
+			break;
+		case PT_INT128:
+			printf("__int128");
+			break;
+		case PT_UINT128:
+			printf("unsigned __int128");
+			break;
+		default:
+			abort();
+		}
 		break;
-	case TYPE_SHORT:
-		printf("short");
-		break;
-	case TYPE_LONG:
-		printf("long");
-		break;
-	case TYPE_LLONG:
-		printf("long long");
-		break;
-	case TYPE_UINT:
-		printf("unsigned int");
-		break;
-	case TYPE_USHORT:
-		printf("unsigned short");
-		break;
-	case TYPE_ULONG:
-		printf("unsigned long");
-		break;
-	case TYPE_ULLONG:
-		printf("unsigned long long");
-		break;
-	case TYPE_BOOL:
-		printf("_Bool");
-		break;
-	case TYPE_FLOAT:
-		printf("float");
-		break;
-	case TYPE_LDOUBLE:
-		printf("long double");
-		break;
-	case TYPE_DOUBLE:
-		printf("double");
-		break;
-	case TYPE_CHAR:
-		printf("char");
-		break;
-	case TYPE_SCHAR:
-		printf("signed char");
-		break;
-	case TYPE_UCHAR:
-		printf("unsigned char");
-		break;
-	case TYPE_INT128:
-		printf("__int128");
-		break;
-	case TYPE_UINT128:
-		printf("unsigned __int128");
-		break;
+	}
 	case TYPE_PTR:
 		printf("pointer(");
 		type_print_annot(((TypePTR *) type)->t, simple);
