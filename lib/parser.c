@@ -480,6 +480,7 @@ static Expr *parse_unary_expr(Parser *p)
 
 static Expr *parse_cast_expr(Parser *p)
 {
+	match(p, TOK_EXTENSION);
 	if (match(p, '(')) {
 		Type *t = parse_type(p);
 		if (t) {
@@ -1102,8 +1103,6 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 	while (flag) {
 		F_(parse_attribute(p, &pd->attrs), false);
 		switch (P) {
-		case TOK_EXTENSION:
-			N; break;
 		// storage-class-specifier
 		case TOK_TYPEDEF:
 			N; pd->is_typedef = true; break;
@@ -1679,6 +1678,7 @@ static Declarator parse_type1_ident_post(Parser *p, const char *id, Type **pbtyp
 
 static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99)
 {
+	match(p, TOK_EXTENSION);
 	if (match(p, TOK_MANAGED)) {
 		F_(match(p, '{'), false);
 		p->managed_count++;
