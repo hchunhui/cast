@@ -918,7 +918,7 @@ static unsigned int parse_type_qualifier(Parser *p)
 }
 
 static bool parse_attribute(Parser *p, Attribute **pa);
-static Declarator parse_type1(Parser *p, Type **pbtype, Attribute *attrs);
+static Declarator parse_type1(Parser *p, Type **pbtype, Attribute *attrs, bool implicit_int);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
 	F(parse_attribute(p, &d->attrs));
@@ -979,7 +979,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 					return 1;
 				enter_scope(p);
 				StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
-				Declarator d1 = parse_type1(p, NULL, NULL);
+				Declarator d1 = parse_type1(p, NULL, NULL, false);
 				F(parse_attribute(p, &d1.attrs));
 				free_funscope(&d1);
 				if (d1.type && d1.type->type == TYPE_VOID &&
@@ -1005,7 +1005,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						n->va_arg = true;
 						break;
 					}
-					d1 = parse_type1(p, NULL, NULL);
+					d1 = parse_type1(p, NULL, NULL, false);
 					F(parse_attribute(p, &d1.attrs));
 					free_funscope(&d1);
 					typeFUN_append(n, d1.type);
@@ -1063,7 +1063,7 @@ static struct EnumPair_ parse_enum_pair(Parser *p)
 	return ret;
 }
 
-static StmtBLOCK *parse_decls(Parser *p, bool in_struct);
+static StmtBLOCK *parse_decls(Parser *p, bool in_struct, bool implicit_int);
 static void type_set_tflags(Type *t, unsigned int tflags)
 {
 	switch (t->type) {
@@ -1082,7 +1082,8 @@ static void type_set_tflags(Type *t, unsigned int tflags)
 		break;
 	}
 }
-static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
+
+static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit_int)
 {
 	unsigned int tflags = 0;
 
@@ -1100,6 +1101,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 	int is_int128 = 0;
 
 	bool flag = true;
+	int old_count = p->next_count;
 	while (flag) {
 		F_(parse_attribute(p, &pd->attrs), false);
 		switch (P) {
@@ -1217,7 +1219,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 			if (match(p, '{')) {
 				enter_scope(p);
 				int old_count = p->next_count;
-				decls = parse_decls(p, true);
+				decls = parse_decls(p, true, false);
 				int new_count = p->next_count;
 				leave_scope(p);
 				if (old_count != new_count && decls == NULL)
@@ -1309,6 +1311,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 					pd->type = is_unsigned ? typePRIM(PT_UINT, tflags) : typePRIM(PT_INT, tflags);
 				else if (tflags & (TFLAG_COMPLEX | TFLAG_IMAGINARY))
 					pd->type = typePRIM(PT_DOUBLE, tflags);
+				else if (implicit_int || p->next_count != old_count)
+					pd->type = typePRIM(PT_INT, tflags);
 			} else if (long_count == 1) {
 				pd->type = is_unsigned ? typePRIM(PT_ULONG, tflags) : typePRIM(PT_LONG, tflags);
 			} else if (long_count == 2) {
@@ -1348,13 +1352,13 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd)
 	return true;
 }
 
-static Declarator parse_type1(Parser *p, Type **pbtype, Attribute *attrs)
+static Declarator parse_type1(Parser *p, Type **pbtype, Attribute *attrs, bool implicit_int)
 {
 	Declarator d, err;
 	init_declarator(&d);
 	init_declarator(&err);
 	d.attrs = attrs;
-	if (parse_type1_(p, pbtype, &d))
+	if (parse_type1_(p, pbtype, &d, implicit_int))
 		return d;
 
 	free_funscope(&d);
@@ -1429,13 +1433,13 @@ static StmtBLOCK *parse_block_stmt(Parser *p)
 	return block;
 }
 
-static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99);
-static StmtBLOCK *parse_decls(Parser *p, bool in_struct)
+static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99, bool implicit_int);
+static StmtBLOCK *parse_decls(Parser *p, bool in_struct, bool implicit_int)
 {
 	StmtBLOCK *block = stmtBLOCK();
 	while (P != '}' && P != TOK_END) {
 		Stmt *s;
-		F(parse_decl_(p, &s, in_struct, false) && s);
+		F(parse_decl_(p, &s, in_struct, false, implicit_int) && s);
 		stmtBLOCK_append(block, s);
 	}
 	return block;
@@ -1670,13 +1674,13 @@ static Declarator parse_type1_ident_post(Parser *p, const char *id, Type **pbtyp
 	if (sv == SYM_TYPE) {
 		tflags |= parse_type_qualifier(p);
 		d.type = typeTYPEDEF(id, tflags);
-		if (parse_type1_(p, pbtype, &d))
+		if (parse_type1_(p, pbtype, &d, false))
 			return d;
 	}
 	return err;
 }
 
-static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99)
+static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99, bool implicit_int)
 {
 	match(p, TOK_EXTENSION);
 	if (match(p, TOK_MANAGED)) {
@@ -1685,7 +1689,7 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99)
 		StmtDECLS *decls = stmtDECLS();
 		while (P != '}' && P != TOK_END) {
 			Stmt *stmt;
-			F_(parse_decl_(p, &stmt, in_struct, false) && stmt, false);
+			F_(parse_decl_(p, &stmt, in_struct, false, implicit_int) && stmt, false);
 			stmtDECLS_append(decls, stmt);
 		}
 		F_(match(p, '}'), false);
@@ -1729,14 +1733,15 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99)
 	}
 	Type *btype;
 	Attribute *attrs = NULL;
-	parse_attribute(p, &attrs);
+	int old_count0 = p->next_count;
+	F_(parse_attribute(p, &attrs), false);
 	if (!in_for99 && (match(p, ';'))) {
 		if (pstmt)
 			*pstmt = stmtSKIP(attrs);
 		return true;
 	}
 	int old_count = p->next_count;
-	Declarator d = parse_type1(p, &btype, attrs);
+	Declarator d = parse_type1(p, &btype, attrs, implicit_int || (old_count0 != old_count));
 	Stmt *res = parse_decl0(p, d, btype, in_struct);
 	int new_count = p->next_count;
 	if (pstmt)
@@ -1746,7 +1751,7 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99)
 
 bool parse_decl(Parser *p, Stmt **pstmt)
 {
-	return parse_decl_(p, pstmt, false, false);
+	return parse_decl_(p, pstmt, false, false, false);
 }
 
 Stmt *parse_stmt(Parser *p)
@@ -1802,7 +1807,7 @@ Stmt *parse_stmt(Parser *p)
 		Stmt *init99, *body;
 		F(match(p, '('));
 		enter_scope(p);
-		bool is_stmt = parse_decl_(p, &init99, false, true);
+		bool is_stmt = parse_decl_(p, &init99, false, true, false);
 		if (is_stmt) {
 			F((init99 && init99->type == STMT_VARDECL), leave_scope(p));
 		} else {
@@ -2023,7 +2028,7 @@ Stmt *parse_stmt(Parser *p)
 
 Type *parse_type(Parser *p)
 {
-	Declarator d = parse_type1(p, NULL, NULL);
+	Declarator d = parse_type1(p, NULL, NULL, false);
 	free_funscope(&d);
 	return d.type;
 }
@@ -2036,7 +2041,7 @@ Expr *parse_expr(Parser *p)
 
 StmtBLOCK *parse_translation_unit(Parser *p)
 {
-	StmtBLOCK *s = parse_decls(p, false);
+	StmtBLOCK *s = parse_decls(p, false, true);
 	enter_scope(p);
 	if (lexer_peek(p->lexer) != TOK_END) {
 		leave_scope(p);
