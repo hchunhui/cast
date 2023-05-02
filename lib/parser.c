@@ -96,20 +96,12 @@ static void leave_scope(Parser *p)
 	free_scope(i);
 }
 
+static const char *const gcc_builtin_types[];
 static void parser_init(Parser *p, Lexer *l)
 {
 	p->lexer = l;
 	p->scopes = NULL;
 	enter_scope(p);
-	const char *const gcc_builtin_types[] = {
-		"__builtin_va_list",
-		"_Float16", "_Float16x",
-		"_Float32", "_Float32x",
-		"_Float64", "_Float64x",
-		"_Float128", "_Float128x",
-		"__int128_t", "__uint128_t",
-		NULL
-	};
 	for (const char *const *t = gcc_builtin_types; *t; t++)
 		symset(p, *t, SYM_TYPE);
 	p->counter = 0;
@@ -189,14 +181,11 @@ static Expr *parse_conditional_expr(Parser *p);    // 15
 static Expr *parse_assignment_expr(Parser *p);     // 16
 static Expr *parse_initializer(Parser *p);
 
-static StmtBLOCK *parse_block_stmt(Parser *p);
+static Expr *parse_parentheses_gnu_post(Parser *p);
 static Expr *parse_parentheses_post(Parser *p)
 {
 	if (P == '{') {
-		StmtBLOCK *block;
-		F(block = parse_block_stmt(p));
-		F(match(p, ')'));
-		return exprSTMT(block);
+		return parse_parentheses_gnu_post(p);
 	} else {
 		Expr *e;
 		F(e = parse_expr(p));
@@ -205,51 +194,12 @@ static Expr *parse_parentheses_post(Parser *p)
 	}
 }
 
+static Expr *parse_builtin_gnu(Parser *p, const char *id);
 static Expr *parse_ident_or_builtin(Parser *p, const char *id)
 {
-	if (strcmp(id, "__builtin_va_start") == 0) {
-		Expr *ap;
-		const char *last;
-		F(match(p, '('));
-		F(ap = parse_assignment_expr(p));
-		F(match(p, ','));
-		F(P == TOK_IDENT);
-		last = get_and_next(p);
-		F(match(p, ')'));
-		return exprVASTART(ap, last);
-	} else if (strcmp(id, "__builtin_va_arg") == 0) {
-		Expr *ap;
-		Type *type;
-		F(match(p, '('));
-		F(ap = parse_assignment_expr(p));
-		F(match(p, ','));
-		F(type = parse_type(p));
-		F(match(p, ')'));
-		return exprVAARG(ap, type);
-	} else if (strcmp(id, "__builtin_va_end") == 0) {
-		Expr *ap;
-		F(match(p, '('));
-		F(ap = parse_assignment_expr(p));
-		F(match(p, ')'));
-		return exprVAEND(ap);
-	} else if (strcmp(id, "__builtin_offsetof") == 0) {
-		Type *type;
-		Expr *mem;
-		F(match(p, '('));
-		F(type = parse_type(p));
-		F(match(p, ','));
-		F(mem = parse_assignment_expr(p));
-		F(match(p, ')'));
-		return exprOFFSETOF(type, mem);
-	} else if (strcmp(id, "__builtin_types_compatible_p") == 0) {
-		Type *type1, *type2;
-		F(match(p, '('));
-		F(type1 = parse_type(p));
-		F(match(p, ','));
-		F(type2 = parse_type(p));
-		F(match(p, ')'));
-		return exprTYPESCOMPATIBLE(type1, type2);
-	}
+	Expr *e = parse_builtin_gnu(p, id);
+	if (e)
+		return e;
 	if (symlookup(p, id) != SYM_IDENT)
 		return NULL;
 	return exprIDENT(id);
@@ -890,6 +840,7 @@ static void fix_type(Declarator *d, Type *btype)
 }
 
 #include "parser-legacy.inc"
+#include "parser-gnuext.inc"
 
 static unsigned int parse_type_qualifier(Parser *p)
 {
@@ -917,11 +868,11 @@ static unsigned int parse_type_qualifier(Parser *p)
 	return flags;
 }
 
-static bool parse_attribute(Parser *p, Attribute **pa);
+static bool parse_gnu_attribute(Parser *p, Attribute **pa);
 static Declarator parse_type1(Parser *p, Type **pbtype, Attribute *attrs, bool implicit_int);
 static int parse_declarator0(Parser *p, Declarator *d)
 {
-	F(parse_attribute(p, &d->attrs));
+	F(parse_gnu_attribute(p, &d->attrs));
 	bool flag = false;
 	if (match(p, '*')) {
 		unsigned int flags = parse_type_qualifier(p);
@@ -980,7 +931,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 				enter_scope(p);
 				StmtBLOCK *funargs = d->funargs ? NULL : stmtBLOCK();
 				Declarator d1 = parse_type1(p, NULL, NULL, false);
-				F(parse_attribute(p, &d1.attrs));
+				F(parse_gnu_attribute(p, &d1.attrs));
 				free_funscope(&d1);
 				if (d1.type && d1.type->type == TYPE_VOID &&
 				    d1.ident == NULL && P == ')') {
@@ -1006,7 +957,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 						break;
 					}
 					d1 = parse_type1(p, NULL, NULL, false);
-					F(parse_attribute(p, &d1.attrs));
+					F(parse_gnu_attribute(p, &d1.attrs));
 					free_funscope(&d1);
 					typeFUN_append(n, d1.type);
 					if (funargs) {
@@ -1103,7 +1054,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 	bool flag = true;
 	int old_count = p->next_count;
 	while (flag) {
-		F_(parse_attribute(p, &pd->attrs), false);
+		F_(parse_gnu_attribute(p, &pd->attrs), false);
 		switch (P) {
 		// storage-class-specifier
 		case TOK_TYPEDEF:
@@ -1212,7 +1163,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 			N; F_(pd->type == NULL, false);
 			const char *tag = NULL;
 			StmtBLOCK *decls = NULL;
-			F_(parse_attribute(p, &attrs), false);
+			F_(parse_gnu_attribute(p, &attrs), false);
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
@@ -1225,7 +1176,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 				if (old_count != new_count && decls == NULL)
 					return false;
 				F_(match(p, '}'), false);
-				F_(parse_attribute(p, &attrs), false); // ambiguous
+				F_(parse_gnu_attribute(p, &attrs), false); // ambiguous
 			}
 			tflags |= parse_type_qualifier(p);
 			pd->type = typeSTRUCT(is_union, tag, decls, tflags, attrs);
@@ -1237,7 +1188,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 			N; F_(pd->type == NULL, false);
 			const char *tag = NULL;
 			StmtBLOCK *decls = NULL;
-			F_(parse_attribute(p, &attrs), false);
+			F_(parse_gnu_attribute(p, &attrs), false);
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
@@ -1257,7 +1208,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 					}
 				}
 				if (match(p, '}')) {
-					F_(parse_attribute(p, &attrs), false); // ambiguous
+					F_(parse_gnu_attribute(p, &attrs), false); // ambiguous
 					tflags |= parse_type_qualifier(p);
 					pd->type = typeENUM(tag, list, tflags, attrs);
 					break;
@@ -1365,52 +1316,6 @@ static Declarator parse_type1(Parser *p, Type **pbtype, Attribute *attrs, bool i
 	return err;
 }
 
-static bool parse_attribute1(Parser *p, Attribute *a)
-{
-	if (match(p, '(')) {
-		if (!match(p, ')')) {
-			Expr *arg;
-			F_(arg = parse_assignment_expr(p), false);
-			avec_push(&a->args, arg);
-			while (match(p, ',')) {
-				F_(arg = parse_assignment_expr(p), false);
-				avec_push(&a->args, arg);
-			}
-			F_(match(p, ')'), false);
-		}
-	}
-	return true;
-}
-
-static bool parse_attribute(Parser *p, Attribute **pa)
-{
-	while (match(p, TOK_ATTRIBUTE)) {
-		F_(match(p, '('), false); F_(match(p, '('), false);
-		bool flag = true;
-		while (flag) {
-			int tok_type = P;
-			if (tok_type == TOK_IDENT ||
-			    (tok_type > TOK_KEYWORD_START &&
-			     tok_type < TOK_KEYWORD_END)) {
-				Attribute *a = __new(Attribute);
-				a->name = get_and_next(p);
-				avec_init(&a->args);
-				a->next = *pa;
-				*pa = a;
-				F_(parse_attribute1(p, a), false);
-			} else if (tok_type == ',') {
-				N;
-			} else if (tok_type == ')') {
-				flag = false;
-			} else {
-				return false;
-			}
-		}
-		F_(match(p, ')'), false); F_(match(p, ')'), false);
-	}
-	return true;
-}
-
 static StmtBLOCK *parse_stmts(Parser *p)
 {
 	StmtBLOCK *block = stmtBLOCK();
@@ -1509,21 +1414,6 @@ static Expr *parse_initializer(Parser *p)
 	return parse_assignment_expr(p);
 }
 
-static bool parse_asm_name(Parser *p, const char **name)
-{
-	if (match(p, TOK_ASM)) {
-		F_(match(p, '('), false);
-		F_(P == TOK_STRING_CST, false);
-		int len = PSL;
-		char *str = __new_(len);
-		memcpy(str, PS, len);
-		*name = str;
-		N;
-		F_(match(p, ')'), false);
-	}
-	return true;
-}
-
 static Stmt *make_decl(Parser *p, Declarator d, bool check)
 {
 	Stmt *decl1;
@@ -1531,19 +1421,19 @@ static Stmt *make_decl(Parser *p, Declarator d, bool check)
 	if (d.type->type == TYPE_FUN) {
 		if (p->managed_count)
 			d.flags |= DFLAG_MANAGED;
-		F(parse_asm_name(p, &ext.gcc_asm_name));
+		F(parse_gnu_asm_name(p, &ext.gcc_asm_name));
 		ext.gcc_attribute = d.attrs;
-		F(parse_attribute(p, &ext.gcc_attribute));
+		F(parse_gnu_attribute(p, &ext.gcc_attribute));
 		decl1 = stmtFUNDECL(d.flags, d.ident, (TypeFUN *) d.type, d.funargs, NULL, ext);
 	} else {
 		Expr *bitfield = NULL;
 		if (match(p, ':')) {
 			F(bitfield = parse_conditional_expr(p));
 		} else {
-			F(parse_asm_name(p, &ext.gcc_asm_name));
+			F(parse_gnu_asm_name(p, &ext.gcc_asm_name));
 		}
 		ext.gcc_attribute = d.attrs;
-		F(parse_attribute(p, &ext.gcc_attribute));
+		F(parse_gnu_attribute(p, &ext.gcc_attribute));
 		ext.c11_alignas = d.c11_alignas;
 		Expr *init = NULL;
 		if (match(p, '=')) {
@@ -1576,7 +1466,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 	if (d.type->type == TYPE_FUN && P == '{') {
 		F(!is_typedef);
 		Attribute *attrs = d.attrs;
-		F(parse_attribute(p, &attrs));
+		F(parse_gnu_attribute(p, &attrs));
 		StmtBLOCK *b;
 		restore_scope(p, d.funscope);
 		b = parse_block_stmt(p);
@@ -1591,7 +1481,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 	Stmt *decl1;
 	if (is_typedef) {
 		Attribute *attrs = d.attrs;
-		F(parse_attribute(p, &attrs));
+		F(parse_gnu_attribute(p, &attrs));
 		decl1 = stmtTYPEDEF(d.ident, d.type,
 				    (Extension) {.gcc_attribute = attrs});
 	} else {
@@ -1637,7 +1527,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 			dd.type = btype;
 			dd.ident = NULL;
 			dd.funargs = NULL;
-			parse_attribute(p, &dd.attrs);
+			parse_gnu_attribute(p, &dd.attrs);
 			parse_declarator(p, &dd);
 			if (dd.ident && !symset(p, dd.ident, symtype)) {
 				return NULL;
@@ -1645,7 +1535,7 @@ Stmt *parse_decl0(Parser *p, Declarator d, Type *btype, bool in_struct)
 
 			if (is_typedef) {
 				Attribute *attrs = dd.attrs;
-				F(parse_attribute(p, &attrs));
+				F(parse_gnu_attribute(p, &attrs));
 				F(decl1 = stmtTYPEDEF(dd.ident, dd.type,
 						      (Extension) {
 							      .gcc_attribute = attrs,
@@ -1721,7 +1611,7 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99, 
 	}
 	if (!in_struct) {
 		if (P == TOK_ASM) {
-			Stmt *s = parse_stmt(p);
+			N; Stmt *s = parse_stmt_gnu_asm(p);
 			if (s) {
 				if (pstmt)
 					*pstmt = s;
@@ -1734,7 +1624,7 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99, 
 	Type *btype;
 	Attribute *attrs = NULL;
 	int old_count0 = p->next_count;
-	F_(parse_attribute(p, &attrs), false);
+	F_(parse_gnu_attribute(p, &attrs), false);
 	if (!in_for99 && (match(p, ';'))) {
 		if (pstmt)
 			*pstmt = stmtSKIP(attrs);
@@ -1879,10 +1769,7 @@ Stmt *parse_stmt(Parser *p)
 			F(match(p, ';'));
 			return stmtGOTO(id);
 		} else if (P == '*') {
-			Expr *e;
-			F(e = parse_expr(p));
-			F(match(p, ';'));
-			return stmtGOTOADDR(e);
+			return parse_stmt_gnu_goto(p);
 		}
 		return NULL;
 	}
@@ -1892,100 +1779,10 @@ Stmt *parse_stmt(Parser *p)
 	case ';': {
 		N; return stmtSKIP(NULL);
 	}
-	case TOK_LABEL: {
-		N; F(P == TOK_IDENT);
-		Stmt *l;
-		F(l = stmtLABELDECL(get_and_next(p)));
-		if (P == ',') {
-			StmtDECLS *decls = stmtDECLS();
-			stmtDECLS_append(decls, l);
-			while(match(p, ',')) {
-				F(P == TOK_IDENT);
-				F(l = stmtLABELDECL(get_and_next(p)));
-				stmtDECLS_append(decls, l);
-			}
-			F(match(p, ';'));
-			l = (Stmt *) decls;
-		}
-		return l;
-	}
-	case TOK_ASM: {
-		N; unsigned int flags = 0;
-		while (true) {
-			if (match(p, TOK_VOLATILE)) {
-				flags |= ASM_FLAG_VOLATILE;
-			} else if (match(p, TOK_INLINE)) {
-				flags |= ASM_FLAG_INLINE;
-			} else if (match(p, TOK_GOTO)) {
-				flags |= ASM_FLAG_GOTO;
-			} else {
-				break;
-			}
-		}
-		F(match(p, '('));
-		F(P == TOK_STRING_CST);
-		const char *content = get_and_next(p);
-		StmtASM *s = stmtASM(flags, content);
-		if (match(p, ':')) {
-			if (P == '[' || P == TOK_STRING_CST) {
-				do {
-					ASMOper oper = (ASMOper) {};
-					if (match(p, '[')) {
-						F(P == TOK_IDENT);
-						oper.symbol = get_and_next(p);
-						F(match(p, ']'));
-					}
-					F(P == TOK_STRING_CST);
-					oper.constraint = get_and_next(p);
-					F(match(p, '('));
-					F(oper.variable = parse_expr(p));
-					F(match(p, ')'));
-					stmtASM_append_output(s, oper);
-				} while (match(p, ','));
-			}
-			if (match(p, ':')) {
-				if (P == '[' || P == TOK_STRING_CST) {
-					do {
-						ASMOper oper = (ASMOper) {};
-						if (match(p, '[')) {
-							F(P == TOK_IDENT);
-							oper.symbol = get_and_next(p);
-							F(match(p, ']'));
-						}
-						F(P == TOK_STRING_CST);
-						oper.constraint = get_and_next(p);
-						F(match(p, '('));
-						F(oper.variable = parse_expr(p));
-						F(match(p, ')'));
-						stmtASM_append_input(s, oper);
-					} while (match(p, ','));
-				}
-				if (match(p, ':')) {
-					const char *cl;
-					if (P == TOK_STRING_CST) {
-						do {
-							F(P == TOK_STRING_CST);
-							cl = get_and_next(p);
-							stmtASM_append_clobber(s, cl);
-						} while(match(p, ','));
-					}
-					if (match(p, ':')) {
-						const char *cl;
-						if (P == TOK_IDENT) {
-							do {
-								F(P == TOK_IDENT);
-								cl = get_and_next(p);
-								stmtASM_append_gotolabels(s, cl);
-							} while(match(p, ','));
-						}
-					}
-				}
-			}
-		}
-		F(match(p, ')'));
-		F(match(p, ';'));
-		return (Stmt *) s;
-	}
+	case TOK_LABEL:
+		N; return parse_stmt_gnu_label(p);
+	case TOK_ASM:
+		N; return parse_stmt_gnu_asm(p);
 	default: {
 		Expr *e;
 		if (P == TOK_IDENT) {
