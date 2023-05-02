@@ -72,7 +72,7 @@ static void patch_call1_expr(Patch *ctx, Expr *h)
 		break;
 	}
 	case EXPR_PMEM: {
-		ExprMEM *e = (ExprMEM *) h;
+		ExprPMEM *e = (ExprPMEM *) h;
 		patch_call1_expr(ctx, e->a);
 		break;
 	}
@@ -121,7 +121,7 @@ static void patch_call1_expr(Patch *ctx, Expr *h)
 		break;
 	}
 	case EXPR_EXPR: {
-		ExprUOP *e = (ExprUOP *) h;
+		ExprEXPR *e = (ExprEXPR *) h;
 		patch_call1_expr(ctx, e->e);
 		break;
 	}

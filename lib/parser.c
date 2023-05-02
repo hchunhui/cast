@@ -432,7 +432,7 @@ static Expr *parse_unary_expr(Parser *p)
 			Type *t = parse_type(p);
 			if (t) {
 				F(match(p, ')'));
-				// sizeof compound litera: sizeof (type) {...}
+				// sizeof compound literal: sizeof (type) {...}
 				if (P == '{') {
 					Expr *ei = parse_initializer(p);
 					if (ei) {
@@ -837,7 +837,7 @@ typedef struct {
 static void init_declarator(Declarator *pd)
 {
 	pd->is_typedef = false;
-	pd->flags = 0;;
+	pd->flags = 0;
 	pd->type = NULL;
 	pd->ident = NULL;
 	pd->funargs = NULL;
