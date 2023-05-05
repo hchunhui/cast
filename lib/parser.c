@@ -1653,9 +1653,9 @@ Stmt *parse_stmt(Parser *p)
 		F(match(p, '('));
 		enter_scope(p);
 		F(e = parse_expr(p), leave_scope(p));
-		struct scope_item *ifc = dup_scope(p);
 		F(match(p, ')'), leave_scope(p));
-		F(s1 = parse_stmt(p), leave_scope(p));
+		struct scope_item *ifc = dup_scope(p);
+		F(s1 = parse_stmt(p), leave_scope(p), free_scope(ifc));
 		leave_scope(p);
 		if (match(p, TOK_ELSE)) {
 			restore_scope(p, ifc);
@@ -1838,8 +1838,8 @@ Expr *parse_expr(Parser *p)
 
 StmtBLOCK *parse_translation_unit(Parser *p)
 {
-	StmtBLOCK *s = parse_decls(p, false, true);
 	enter_scope(p);
+	StmtBLOCK *s = parse_decls(p, false, true);
 	if (lexer_peek(p->lexer) != TOK_END) {
 		leave_scope(p);
 		return NULL;
