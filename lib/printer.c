@@ -89,8 +89,6 @@ static bool expr_isprim(Expr *h)
 static void expr_print(Expr *h, bool simple);
 static void expr_print1(Expr *h, bool simple)
 {
-	if (h->type == EXPR_EXPR)
-		return expr_print1(((ExprEXPR *) h)->e, simple);
 	if (expr_isprim(h) || h->type == EXPR_INIT) {
 		expr_print(h, simple);
 	} else {
@@ -100,8 +98,6 @@ static void expr_print1(Expr *h, bool simple)
 
 static void expr_print2(Expr *h, bool simple)
 {
-	if (h->type == EXPR_EXPR)
-		return expr_print2(((ExprEXPR *) h)->e, simple);
 	if (h->type == EXPR_BOP &&
 	    ((ExprBOP *) h)->op == EXPR_OP_COMMA) {
 		lp(); expr_print(h, simple); rp();
@@ -112,11 +108,7 @@ static void expr_print2(Expr *h, bool simple)
 
 static void expr_print_cond(Expr *h, bool simple)
 {
-	if (h->type == EXPR_EXPR) {
-		lp(); expr_print(h, simple); rp();
-	} else {
-		expr_print(h, simple);
-	}
+	expr_print(h, simple);
 }
 
 static void print_memlist(Expr *h)
@@ -597,14 +589,16 @@ static void expr_print(Expr *h, bool simple)
 	}
 	case EXPR_MEM: {
 		ExprMEM *e = (ExprMEM *) h;
+		if (e->a->type == EXPR_UOP) {
+			ExprUOP *ea = (ExprUOP *) (e->a);
+			if (ea->op == EXPR_OP_DEREF) {
+				expr_print1(ea->e, simple);
+				printf(" -> %s", e->id);
+				break;
+			}
+		}
 		expr_print1(e->a, simple);
 		printf(" . %s", e->id);
-		break;
-	}
-	case EXPR_PMEM: {
-		ExprMEM *e = (ExprMEM *) h;
-		expr_print1(e->a, simple);
-		printf(" -> %s", e->id);
 		break;
 	}
 	case EXPR_CALL: {
@@ -662,11 +656,6 @@ static void expr_print(Expr *h, bool simple)
 			expr_print1(e->a, simple);
 		printf(" : ");
 		expr_print1(e->b, simple);
-		break;
-	}
-	case EXPR_EXPR: {
-		ExprUOP *e = (ExprUOP *) h;
-		expr_print(e->e, simple);
 		break;
 	}
 	case EXPR_CAST: {

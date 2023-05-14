@@ -71,11 +71,6 @@ static void patch_call1_expr(Patch *ctx, Expr *h)
 		patch_call1_expr(ctx, e->a);
 		break;
 	}
-	case EXPR_PMEM: {
-		ExprPMEM *e = (ExprPMEM *) h;
-		patch_call1_expr(ctx, e->a);
-		break;
-	}
 	case EXPR_CALL: {
 		ExprCALL *e = (ExprCALL *) h;
 		if (ctx->managed_count == 0)
@@ -90,8 +85,9 @@ static void patch_call1_expr(Patch *ctx, Expr *h)
 			} else if (strcmp(i->id, "__new_") == 0) {
 				e->func = exprIDENT("allocator_memalloc");
 				exprCALL_prepend(e,
-						 exprPMEM(exprIDENT("__myctx"),
-							  "allocator"));
+						 exprMEM(exprUOP(EXPR_OP_DEREF,
+								 exprIDENT("__myctx")),
+							 "allocator"));
 			}
 		}
 		Expr *e1;
@@ -118,11 +114,6 @@ static void patch_call1_expr(Patch *ctx, Expr *h)
 		if (e->a)
 			patch_call1_expr(ctx, e->a);
 		patch_call1_expr(ctx, e->b);
-		break;
-	}
-	case EXPR_EXPR: {
-		ExprEXPR *e = (ExprEXPR *) h;
-		patch_call1_expr(ctx, e->e);
 		break;
 	}
 	case EXPR_CAST: {

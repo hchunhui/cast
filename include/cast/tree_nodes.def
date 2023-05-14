@@ -24,14 +24,12 @@ EXPR(BOOL_CST,   _Bool, v)
 
 EXPR(IDENT,      const char *, id)
 EXPR(MEM,        Expr *, a, const char *, id)
-EXPR(PMEM,       Expr *, a, const char *, id)
 //EXPR(CALL,       Expr *, e, ...)
 
 EXPR(UOP,        ExprUnOp, op, Expr *, e)
 EXPR(BOP,        ExprBinOp,op, Expr *, a, Expr *, b)
 EXPR(COND,       Expr *, c, Expr *, a, Expr *, b)
 
-EXPR(EXPR,       Expr *, e)
 EXPR(CAST,       Type *, t, Expr *, e)
 EXPR(SIZEOF,     Expr *, e)
 EXPR(SIZEOFT,    Type *, t)

@@ -190,7 +190,7 @@ static Expr *parse_parentheses_post(Parser *p)
 		Expr *e;
 		F(e = parse_expr(p));
 		F(match(p, ')'));
-		return exprEXPR(e);
+		return e;
 	}
 }
 
@@ -321,7 +321,8 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 		}
 		case TOK_PMEM: { // -
 			N; if (P == TOK_IDENT) {
-				e = exprPMEM(e, get_and_next(p));
+				e = exprMEM(exprUOP(EXPR_OP_DEREF, e),
+					    get_and_next(p));
 			} else {
 				return NULL;
 			}

@@ -114,11 +114,6 @@ static void mark_expr(State *st, Expr *h)
 		mark_expr(st, e->a);
 		break;
 	}
-	case EXPR_PMEM: {
-		ExprMEM *e = (ExprMEM *) h;
-		mark_expr(st, e->a);
-		break;
-	}
 	case EXPR_CALL: {
 		ExprCALL *e = (ExprCALL *) h;
 		mark_expr(st, e->func);
@@ -145,11 +140,6 @@ static void mark_expr(State *st, Expr *h)
 		mark_expr(st, e->c);
 		if (e->a) mark_expr(st, e->a);
 		mark_expr(st, e->b);
-		break;
-	}
-	case EXPR_EXPR: {
-		ExprUOP *e = (ExprUOP *) h;
-		mark_expr(st, e->e);
 		break;
 	}
 	case EXPR_CAST: {
