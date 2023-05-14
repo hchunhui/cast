@@ -1,6 +1,6 @@
 TOPDIR = ..
 PROG = cast-pp
-CSRCS = main.c
+CSRCS = main.c elim_unused.c
 OBJS += ${TOPDIR}/lib/libcast.a
 
 CFLAGS = -I ${TOPDIR} -I ${TOPDIR}/include -g -O2

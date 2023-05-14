@@ -367,6 +367,10 @@ static void patch(StmtBLOCK *s)
 }
 END_MANAGED
 
+BEGIN_MANAGED
+StmtBLOCK *elim_unused(StmtBLOCK *tu);
+END_MANAGED
+
 static int main1(const char *file)
 {
 	int ret = 0;
@@ -384,6 +388,7 @@ static int main1(const char *file)
 	if (translation_unit) {
 #ifdef __CAST_MANAGED__
 		__managed_patch(ctx, translation_unit);
+		translation_unit = __managed_elim_unused(ctx, translation_unit);
 #else
 		patch(translation_unit);
 #endif
