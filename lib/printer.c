@@ -253,7 +253,7 @@ static void type_print_annot(Type *type, bool simple)
 			if (simple) {
 				printf(" {/* ... */}");
 			} else {
-				printf(" {");
+				printf(" {\n");
 				struct EnumPair_ *p;
 				int i;
 				avec_foreach_ptr(&(t->list->items), p, i) {
