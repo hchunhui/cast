@@ -1700,7 +1700,9 @@ Stmt *parse_stmt(Parser *p)
 		enter_scope(p);
 		bool is_stmt = parse_decl_(p, &init99, false, true, false);
 		if (is_stmt) {
-			F((init99 && init99->type == STMT_VARDECL), leave_scope(p));
+			F((init99 &&
+			   (init99->type == STMT_VARDECL ||
+			    init99->type == STMT_DECLS)), leave_scope(p));
 		} else {
 			init = parse_expr(p);
 			F(match(p, ';'), leave_scope(p));
@@ -1712,7 +1714,7 @@ Stmt *parse_stmt(Parser *p)
 		F(body = parse_stmt(p), leave_scope(p));
 		leave_scope(p);
 		if (init99)
-			return stmtFOR99((StmtVARDECL *) init99, cond, step, body);
+			return stmtFOR99(init99, cond, step, body);
 		else
 			return stmtFOR(init, cond, step, body);
 	}

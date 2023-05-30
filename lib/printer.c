@@ -913,14 +913,30 @@ static void stmt_print(Stmt *h, int level)
 	}
 	case STMT_FOR99: {
 		StmtFOR99 *s = (StmtFOR99 *) h;
-		printf("for (");
-		stmt_print((Stmt *) s->init, 0);
-		if (s->cond) expr_print_cond(s->cond, false);
-		printf("; ");
-		if (s->step) expr_print(s->step, false);
-		printf(")\n");
-		stmt_printb(s->body, level + 1);
-		printf("\n");
+		if (s->init->type == STMT_VARDECL) {
+			printf("for (");
+			stmt_print(s->init, 0);
+			if (s->cond) expr_print_cond(s->cond, false);
+			printf("; ");
+			if (s->step) expr_print(s->step, false);
+			printf(")\n");
+			stmt_printb(s->body, level + 1);
+			printf("\n");
+		} else if (s->init->type == STMT_DECLS) {
+			printf("{\n");
+			stmt_print(s->init, level);
+			print_level(level);
+			printf("for (; ");
+			if (s->cond) expr_print_cond(s->cond, false);
+			printf("; ");
+			if (s->step) expr_print(s->step, false);
+			printf(")\n");
+			stmt_printb(s->body, level + 1);
+			print_level(level);
+			printf("}\n");
+		} else {
+			abort();
+		}
 		break;
 	}
 	case STMT_BREAK: {
