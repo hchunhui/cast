@@ -39,17 +39,27 @@ typedef struct {
 
 
 #define map_get(m, key)\
-  ( (m)->ref = map_get_(&(m)->base, key) )
+  ( (m)->ref = map_get_(&(m)->base, key, strlen(key) + 1) )
 
 
 #define map_set(m, key, value)\
   ( (m)->tmp = (value),\
-    map_set_(&(m)->base, key, &(m)->tmp, sizeof((m)->tmp)) )
+    map_set_(&(m)->base, key, strlen(key) + 1, &(m)->tmp, sizeof((m)->tmp)) )
 
 
 #define map_remove(m, key)\
-  map_remove_(&(m)->base, key)
+  map_remove_(&(m)->base, key, strlen(key) + 1)
 
+#define map_get1(m, key)\
+  ( (m)->ref = map_get_(&(m)->base, (const char *) &(key), sizeof(void *)) )
+
+
+#define map_set1(m, key, value)\
+  ( (m)->tmp = (value),\
+    map_set_(&(m)->base, (const char *) &(key), sizeof(void *), &(m)->tmp, sizeof((m)->tmp)) )
+
+#define map_remove1(m, key)\
+  map_remove_(&(m)->base, (const char *) &(key), sizeof(void *))
 
 #define map_iter(m)\
   map_iter_()
@@ -60,9 +70,9 @@ typedef struct {
 
 
 void map_deinit_(map_base_t *m);
-void *map_get_(map_base_t *m, const char *key);
-int map_set_(map_base_t *m, const char *key, void *value, int vsize);
-void map_remove_(map_base_t *m, const char *key);
+void *map_get_(map_base_t *m, const char *key, int ksize);
+int map_set_(map_base_t *m, const char *key, int ksize, void *value, int vsize);
+void map_remove_(map_base_t *m, const char *key, int ksize);
 map_iter_t map_iter_(void);
 const char *map_next_(map_base_t *m, map_iter_t *iter);
 
