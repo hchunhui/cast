@@ -1792,7 +1792,9 @@ Stmt *parse_stmt(Parser *p)
 			const char *id = get_and_next(p);
 			if (match(p, ':')) {
 				// a label
-				Stmt *s;
+				Stmt *s = NULL;
+				F(parse_gnu_label_attribute(p, id, &s));
+				if (s) return s;
 				F(s = parse_stmt(p));
 				return stmtLABEL(id, s);
 			} else {

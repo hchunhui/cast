@@ -233,3 +233,19 @@ static bool parse_gnu_attribute(Parser *p, Attribute **pa)
 	}
 	return true;
 }
+
+static bool parse_gnu_label_attribute(Parser *p, const char *id, Stmt **ret)
+{
+	// https://gcc.gnu.org/onlinedocs/gcc/Attribute-Syntax.html
+	// "If the semicolon is missing, C++ label attributes are ambiguous
+	//  ...
+	//  Declarations cannot be labelled in C90 or C99, so the ambiguity does
+	//  not arise there."
+	Attribute *attr = NULL;
+	F_(parse_gnu_attribute(p, &attr), false);
+	if (attr) {
+		match(p, ';');
+		*ret = stmtLABEL(id, stmtSKIP(attr));
+	}
+	return true;
+}
