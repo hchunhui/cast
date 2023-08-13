@@ -258,6 +258,10 @@ static void type_print_annot(Type *type, bool simple)
 				int i;
 				avec_foreach_ptr(&(t->list->items), p, i) {
 					printf("%s", p->id);
+					if (p->attr) {
+						printf(" ");
+						attrs_print(p->attr);
+					}
 					if (p->val) {
 						printf(" = ");
 						expr_print1(p->val, simple);

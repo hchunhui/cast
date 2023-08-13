@@ -281,6 +281,7 @@ END_MANAGED
 
 struct EnumPair_ {
 	const char *id;
+	Attribute *attr;
 	Expr *val;
 };
 typedef avec_t(struct EnumPair_) avec_epair_t;

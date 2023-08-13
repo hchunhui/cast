@@ -999,12 +999,16 @@ static int parse_declarator(Parser *p, Declarator *d)
 
 static struct EnumPair_ parse_enum_pair(Parser *p)
 {
-	struct EnumPair_ ret = {NULL, NULL};
+	struct EnumPair_ ret = {NULL, NULL, NULL};
 	if (P == TOK_IDENT) {
 		if (!symset(p, PS, SYM_IDENT)) {
 			return ret;
 		}
 		ret.id = get_and_next(p);
+		if(!parse_gnu_attribute(p, &ret.attr)) {
+			ret.id = NULL;
+			return ret;
+		}
 		if (match(p, '=')) {
 			ret.val = parse_assignment_expr(p);
 			if (!ret.val) {
