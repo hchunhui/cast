@@ -265,7 +265,7 @@ static Expr *parse_primary_expr(Parser *p)
 		F(match(p, '('));
 		F(expr = parse_assignment_expr(p));
 		ExprGENERIC *g = exprGENERIC(expr);
-		while(match(p, ',')) {
+		while (match(p, ',')) {
 			GENERICPair item = (GENERICPair) {};
 			F(match(p, TOK_DEFAULT) || (item.type = parse_type(p)));
 			F(match(p, ':'));

@@ -98,7 +98,7 @@ static Stmt *parse_stmt_gnu_label(Parser *p)
 	if (P == ',') {
 		StmtDECLS *decls = stmtDECLS();
 		stmtDECLS_append(decls, l);
-		while(match(p, ',')) {
+		while (match(p, ',')) {
 			F(P == TOK_IDENT);
 			F(l = stmtLABELDECL(get_and_next(p)));
 			stmtDECLS_append(decls, l);
@@ -168,7 +168,7 @@ static Stmt *parse_stmt_gnu_asm(Parser *p)
 						F(P == TOK_STRING_CST);
 						cl = get_and_next(p);
 						stmtASM_append_clobber(s, cl);
-					} while(match(p, ','));
+					} while (match(p, ','));
 				}
 				if (match(p, ':')) {
 					const char *cl;
@@ -177,7 +177,7 @@ static Stmt *parse_stmt_gnu_asm(Parser *p)
 							F(P == TOK_IDENT);
 							cl = get_and_next(p);
 							stmtASM_append_gotolabels(s, cl);
-						} while(match(p, ','));
+						} while (match(p, ','));
 					}
 				}
 			}
