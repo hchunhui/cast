@@ -428,6 +428,16 @@ static void mark_topstmt(State *st, Stmt *h)
 				mark_expr(st, s->init);
 			if (s->ext.gcc_attribute)
 				mark_attrs(st, s->ext.gcc_attribute);
+		} else if ((s->flags & DFLAG_EXTERN) && s->name) {
+			Attribute *attr = s->ext.gcc_attribute;
+			while (attr) {
+				if (strcmp(attr->name, "unused") == 0) {
+					mark_attrs(st, s->ext.gcc_attribute);
+					map_set(&st->symbol_set, s->name, 1);
+					break;
+				}
+				attr = attr->next;
+			}
 		}
 		break;
 	}
