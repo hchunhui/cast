@@ -108,7 +108,12 @@ static void expr_print2(Expr *h, bool simple)
 
 static void expr_print_cond(Expr *h, bool simple)
 {
-	expr_print(h, simple);
+	if (h->type == EXPR_BOP &&
+	    ((ExprBOP *) h)->op == EXPR_OP_ASSIGN) {
+		lp(); expr_print(h, simple); rp();
+	} else {
+		expr_print(h, simple);
+	}
 }
 
 static void print_memlist(Expr *h)
