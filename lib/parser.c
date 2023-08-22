@@ -1059,7 +1059,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 	bool flag = true;
 	int old_count = p->next_count;
 	while (flag) {
-		F_(parse_gnu_attribute(p, &pd->attrs), false);
+		F(parse_gnu_attribute(p, &pd->attrs));
 		switch (P) {
 		// storage-class-specifier
 		case TOK_TYPEDEF:
@@ -1076,15 +1076,15 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 			N; pd->flags |= DFLAG_THREADLOCAL; break;
 		case TOK_ALIGNAS: {
 			N;
-			F_(match(p, '('), false);
+			F(match(p, '('));
 			Type *t = parse_type(p);
 			if (t) {
 				pd->c11_alignas = exprALIGNOF(t);
 			} else {
 				Expr *e;
-				F_(pd->c11_alignas = parse_conditional_expr(p), false);
+				F(pd->c11_alignas = parse_conditional_expr(p));
 			}
-			F_(match(p, ')'), false);
+			F(match(p, ')'));
 			break;
 		}
 		// type-qualifier
@@ -1101,8 +1101,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 				is_signed + is_unsigned + is_short + long_count;
 			if (pd->type == NULL && xcount == 0 && match(p, '(')) {
 				Type *atype;
-				F_(atype = parse_type(p), false);
-				F_(match(p, ')'), false);
+				F(atype = parse_type(p));
+				F(match(p, ')'));
 				tflags |= TFLAG_ATOMIC;
 				tflags |= parse_type_qualifier(p);
 				type_set_tflags(atype, tflags);
@@ -1165,10 +1165,10 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 		{
 			Attribute *attrs = NULL;
 			bool is_union = P == TOK_UNION;
-			N; F_(pd->type == NULL, false);
+			N; F(pd->type == NULL);
 			const char *tag = NULL;
 			StmtBLOCK *decls = NULL;
-			F_(parse_gnu_attribute(p, &attrs), false);
+			F(parse_gnu_attribute(p, &attrs));
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
@@ -1180,8 +1180,8 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 				leave_scope(p);
 				if (old_count != new_count && decls == NULL)
 					return false;
-				F_(match(p, '}'), false);
-				F_(parse_gnu_attribute(p, &attrs), false); // ambiguous
+				F(match(p, '}'));
+				F(parse_gnu_attribute(p, &attrs)); // ambiguous
 			}
 			tflags |= parse_type_qualifier(p);
 			pd->type = typeSTRUCT(is_union, tag, decls, tflags, attrs);
@@ -1190,10 +1190,10 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 		case TOK_ENUM:
 		{
 			Attribute *attrs = NULL;
-			N; F_(pd->type == NULL, false);
+			N; F(pd->type == NULL);
 			const char *tag = NULL;
 			StmtBLOCK *decls = NULL;
-			F_(parse_gnu_attribute(p, &attrs), false);
+			F(parse_gnu_attribute(p, &attrs));
 			if (P == TOK_IDENT) {
 				tag = get_and_next(p);
 			}
@@ -1213,7 +1213,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 					}
 				}
 				if (match(p, '}')) {
-					F_(parse_gnu_attribute(p, &attrs), false); // ambiguous
+					F(parse_gnu_attribute(p, &attrs)); // ambiguous
 					tflags |= parse_type_qualifier(p);
 					pd->type = typeENUM(tag, list, tflags, attrs);
 					break;
@@ -1226,15 +1226,15 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 		}
 		case TOK_TYPEOF: {
 			N; Expr *e;
-			F_(match(p, '('), false);
+			F(match(p, '('));
 			Type *t = parse_type(p);
 			if (t) {
-				F_(match(p, ')'), false);
+				F(match(p, ')'));
 				pd->type = t;
 				break;
 			}
-			F_(e = parse_expr(p), false);
-			F_(match(p, ')'), false);
+			F(e = parse_expr(p));
+			F(match(p, ')'));
 			tflags |= parse_type_qualifier(p);
 			pd->type = typeTYPEOF(e, tflags);
 			break;
@@ -1249,7 +1249,7 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 			break;
 		}
 	}
-	F_(!((tflags & TFLAG_COMPLEX) && (tflags & TFLAG_IMAGINARY)), false);
+	F(!((tflags & TFLAG_COMPLEX) && (tflags & TFLAG_IMAGINARY)));
 
 	int tcount = is_int + is_bool + is_char + is_float + is_double + is_void + is_int128;
 	int scount = is_signed + is_unsigned;
@@ -1301,10 +1301,10 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 			}
 		}
 	}
-	F_(pd->type, false);
+	F(pd->type);
 	if (pbtype)
 		*pbtype = pd->type;
-	F_(parse_declarator(p, pd), false);
+	F(parse_declarator(p, pd));
 	return true;
 }
 
@@ -1579,15 +1579,15 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99, 
 {
 	match(p, TOK_EXTENSION);
 	if (match(p, TOK_MANAGED)) {
-		F_(match(p, '{'), false);
+		F(match(p, '{'));
 		p->managed_count++;
 		StmtDECLS *decls = stmtDECLS();
 		while (P != '}' && P != TOK_END) {
 			Stmt *stmt;
-			F_(parse_decl_(p, &stmt, in_struct, false, implicit_int) && stmt, false);
+			F(parse_decl_(p, &stmt, in_struct, false, implicit_int) && stmt);
 			stmtDECLS_append(decls, stmt);
 		}
-		F_(match(p, '}'), false);
+		F(match(p, '}'));
 		p->managed_count--;
 		if (pstmt)
 			*pstmt = (Stmt *) decls;
@@ -1600,16 +1600,16 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99, 
 		return true;
 	}
 	if (match(p, TOK_STATICASSERT)) {
-		F_(match(p, '('), false);
+		F(match(p, '('));
 		Expr *expr;
 		const char *errmsg = NULL;
-		F_(expr = parse_conditional_expr(p), false);
+		F(expr = parse_conditional_expr(p));
 		if (match(p, ',')) {
-			F_(P == TOK_STRING_CST, false);
+			F(P == TOK_STRING_CST);
 			errmsg = get_and_next(p);
 		}
-		F_(match(p, ')'), false);
-		F_(match(p, ';'), false);
+		F(match(p, ')'));
+		F(match(p, ';'));
 		if (pstmt)
 			*pstmt = stmtSTATICASSERT(expr, errmsg);
 		return true;
@@ -1629,7 +1629,7 @@ static bool parse_decl_(Parser *p, Stmt **pstmt, bool in_struct, bool in_for99, 
 	Type *btype;
 	Attribute *attrs = NULL;
 	int old_count0 = p->next_count;
-	F_(parse_gnu_attribute(p, &attrs), false);
+	F(parse_gnu_attribute(p, &attrs));
 	if (!in_for99 && (match(p, ';'))) {
 		if (pstmt)
 			*pstmt = stmtSKIP(attrs);

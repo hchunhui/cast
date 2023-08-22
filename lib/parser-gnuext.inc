@@ -78,14 +78,14 @@ static Expr *parse_builtin_gnu(Parser *p, const char *id)
 static bool parse_gnu_asm_name(Parser *p, const char **name)
 {
 	if (match(p, TOK_ASM)) {
-		F_(match(p, '('), false);
-		F_(P == TOK_STRING_CST, false);
+		F(match(p, '('));
+		F(P == TOK_STRING_CST);
 		int len = PSL;
 		char *str = __new_(len);
 		memcpy(str, PS, len);
 		*name = str;
 		N;
-		F_(match(p, ')'), false);
+		F(match(p, ')'));
 	}
 	return true;
 }
@@ -193,13 +193,13 @@ static bool parse_gnu_attribute1(Parser *p, Attribute *a)
 	if (match(p, '(')) {
 		if (!match(p, ')')) {
 			Expr *arg;
-			F_(arg = parse_assignment_expr(p), false);
+			F(arg = parse_assignment_expr(p));
 			avec_push(&a->args, arg);
 			while (match(p, ',')) {
-				F_(arg = parse_assignment_expr(p), false);
+				F(arg = parse_assignment_expr(p));
 				avec_push(&a->args, arg);
 			}
-			F_(match(p, ')'), false);
+			F(match(p, ')'));
 		}
 	}
 	return true;
@@ -208,7 +208,7 @@ static bool parse_gnu_attribute1(Parser *p, Attribute *a)
 static bool parse_gnu_attribute(Parser *p, Attribute **pa)
 {
 	while (match(p, TOK_ATTRIBUTE)) {
-		F_(match(p, '('), false); F_(match(p, '('), false);
+		F(match(p, '(')); F(match(p, '('));
 		bool flag = true;
 		while (flag) {
 			int tok_type = P;
@@ -220,7 +220,7 @@ static bool parse_gnu_attribute(Parser *p, Attribute **pa)
 				avec_init(&a->args);
 				a->next = *pa;
 				*pa = a;
-				F_(parse_gnu_attribute1(p, a), false);
+				F(parse_gnu_attribute1(p, a));
 			} else if (tok_type == ',') {
 				N;
 			} else if (tok_type == ')') {
@@ -229,7 +229,7 @@ static bool parse_gnu_attribute(Parser *p, Attribute **pa)
 				return false;
 			}
 		}
-		F_(match(p, ')'), false); F_(match(p, ')'), false);
+		F(match(p, ')')); F(match(p, ')'));
 	}
 	return true;
 }
@@ -242,7 +242,7 @@ static bool parse_gnu_label_attribute(Parser *p, const char *id, Stmt **ret)
 	//  Declarations cannot be labelled in C90 or C99, so the ambiguity does
 	//  not arise there."
 	Attribute *attr = NULL;
-	F_(parse_gnu_attribute(p, &attr), false);
+	F(parse_gnu_attribute(p, &attr));
 	if (attr) {
 		match(p, ';');
 		*ret = stmtLABEL(id, stmtSKIP(attr));
