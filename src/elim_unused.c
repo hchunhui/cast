@@ -533,7 +533,7 @@ static void mark_topstmt2(State *st, Stmt *h)
 			TypeSTRUCT *t = (TypeSTRUCT *) s->type;
 			if (t->tag && map_get(&st->symbol_set, t->tag)) {
 				mark_type(st, s->type);
-			} if (t->decls) {
+			} else if (t->decls) {
 				// has nested struct/enum defs?
 				Stmt *p;
 				int i;
