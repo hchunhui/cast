@@ -1817,7 +1817,12 @@ Stmt *parse_stmt(Parser *p)
 				Stmt *s = NULL;
 				F(parse_gnu_label_attribute(p, id, &s));
 				if (s) return s;
-				F(s = parse_stmt(p));
+				// C23: labels before end of blocks
+				if (P == '}') {
+					s = stmtSKIP(NULL);
+				} else {
+					F(s = parse_stmt(p));
+				}
 				return stmtLABEL(id, s);
 			} else {
 				Type *btype;
