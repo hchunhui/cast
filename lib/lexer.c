@@ -712,7 +712,25 @@ void lexer_next(Lexer *l)
 		lex_many(l, lex_alphadigit_);
 		vec_push(&l->tok, 0);
 
+		int cprefix = 0;
+		int sprefix = 0;
 		if (strcmp(l->tok.data, "L") == 0) {
+			cprefix = TOK_WCHAR_CST;
+			sprefix = TOK_WSTRING_CST;
+		}
+		if (strcmp(l->tok.data, "u") == 0) {
+			cprefix = TOK_WCHAR_CST_u;
+			sprefix = TOK_WSTRING_CST_u;
+		}
+		if (strcmp(l->tok.data, "U") == 0) {
+			cprefix = TOK_WCHAR_CST_U;
+			sprefix = TOK_WSTRING_CST_U;
+		}
+		if (strcmp(l->tok.data, "u8") == 0) {
+			cprefix = TOK_WCHAR_CST_u8;
+			sprefix = TOK_WSTRING_CST_u8;
+		}
+		if (cprefix != 0) {
 			// WIDE
 			if (lex_one_ignore(l, lex_quote)) {
 				vec_clear(&l->tok);
@@ -728,12 +746,12 @@ void lexer_next(Lexer *l)
 					}
 				} while (lex_one_ignore(l, lex_quote));
 				vec_push(&l->tok, 0);
-				l->tok_type = TOK_WSTRING_CST;
+				l->tok_type = sprefix;
 				return;
 			}
 			int res = lex_char(l);
 			if (res != 256) {
-				l->tok_type = TOK_WCHAR_CST;
+				l->tok_type = cprefix;
 				l->u.char_cst = res;
 				return;
 			}

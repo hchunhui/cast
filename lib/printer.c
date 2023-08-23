@@ -538,7 +538,13 @@ static void expr_print(Expr *h, bool simple)
 	}
 	case EXPR_CHAR_CST: {
 		ExprCHAR_CST *e = (ExprCHAR_CST *) h;
-		if (e->wide) putchar('L');
+		switch(e->kind) {
+		case WCK_NONE: break;
+		case WCK_L: putchar('L'); break;
+		case WCK_u: putchar('u'); break;
+		case WCK_U: putchar('U'); break;
+		case WCK_u8: printf("u8"); break;
+		}
 		putchar('\'');
 		switch(e->v) {
 		case '\\': printf("\\\\"); break;
@@ -562,7 +568,13 @@ static void expr_print(Expr *h, bool simple)
 	}
 	case EXPR_STRING_CST: {
 		ExprSTRING_CST *e = (ExprSTRING_CST *) h;
-		if (e->wide) putchar('L');
+		switch(e->kind) {
+		case WCK_NONE: break;
+		case WCK_L: putchar('L'); break;
+		case WCK_u: putchar('u'); break;
+		case WCK_U: putchar('U'); break;
+		case WCK_u8: printf("u8"); break;
+		}
 		putchar('"');
 		print_quoted(e->v, e->len - 1);
 		putchar('"');

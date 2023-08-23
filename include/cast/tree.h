@@ -142,6 +142,14 @@ typedef enum {
 	EXPR_OP_ASSIGNBSHR,
 } ExprBinOp;
 
+typedef enum {
+	WCK_NONE = 0,
+	WCK_L,
+	WCK_u,
+	WCK_U,
+	WCK_u8,
+} WCKind;
+
 #include "allocator.h"
 #include "avec.h"
 typedef avec_t(Type*) avec_type_t;

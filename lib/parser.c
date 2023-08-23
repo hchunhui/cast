@@ -237,18 +237,36 @@ static Expr *parse_primary_expr(Parser *p)
 		N; return exprULLONG_CST(i);
 	}
 	case TOK_WCHAR_CST:
+	case TOK_WCHAR_CST_u:
+	case TOK_WCHAR_CST_U:
+	case TOK_WCHAR_CST_u8:
 	case TOK_CHAR_CST: {
-		bool wide = P == TOK_WCHAR_CST;
+		WCKind kind = WCK_NONE;
+		switch (P) {
+		case TOK_WCHAR_CST: kind = WCK_L; break;
+		case TOK_WCHAR_CST_u: kind = WCK_u; break;
+		case TOK_WCHAR_CST_U: kind = WCK_U; break;
+		case TOK_WCHAR_CST_u8: kind = WCK_u8; break;
+		}
 		char c = PC;
-		N; return exprCHAR_CST(c, wide);
+		N; return exprCHAR_CST(c, kind);
 	}
 	case TOK_WSTRING_CST:
+	case TOK_WSTRING_CST_u:
+	case TOK_WSTRING_CST_U:
+	case TOK_WSTRING_CST_u8:
 	case TOK_STRING_CST: {
-		bool wide = P == TOK_WSTRING_CST;
+		WCKind kind = WCK_NONE;
+		switch (P) {
+		case TOK_WSTRING_CST: kind = WCK_L; break;
+		case TOK_WSTRING_CST_u: kind = WCK_u; break;
+		case TOK_WSTRING_CST_U: kind = WCK_U; break;
+		case TOK_WSTRING_CST_u8: kind = WCK_u8; break;
+		}
 		int len = PSL;
 		char *str = __new_(len);
 		memcpy(str, PS, len);
-		N; return exprSTRING_CST(str, len, wide);
+		N; return exprSTRING_CST(str, len, kind);
 	}
 	case TOK_FLOAT_CST: {
 		float i = PF;
