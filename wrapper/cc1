@@ -42,14 +42,13 @@ if if_preproc and ("-lang-asm" not in sys.argv):
     output = find_output(sys.argv)
     if output is None:
         exit(ret)
-    print("cast: processing {}".format(output), file=sys.stderr)
     try:
         out = sp.check_output([pppath, output])
     except:
         out = b""
         ret = 1
     if '--cast-print' in (sys.argv):
-        print(out.decode())
+        sys.stdout.buffer.write(out)
     if ret == 0:
         with open(output, 'wb') as f:
             f.write(out)

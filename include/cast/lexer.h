@@ -133,4 +133,6 @@ char lexer_peek_char(Lexer *l);
 const char *lexer_report_path(Lexer *l);
 int lexer_report_line(Lexer *l);
 
+const char *lexer_report_file(Lexer *l);
+
 #endif /* LEXER_H */

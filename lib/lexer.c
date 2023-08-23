@@ -160,6 +160,8 @@ struct Lexer_ {
 	int line;
 	char path[256];
 	vec_char_t tok_temp;
+
+	char file[256];
 };
 
 #define P text_stream_peek(l->ts)
@@ -497,6 +499,8 @@ static int skip_spaces(Lexer *l)
 						if (lex_stringbody(l, &l->tok_temp)) {
 							vec_push(&l->tok_temp, 0);
 							strncpy(l->path, l->tok_temp.data, 255);
+							if (l->file[0] == 0)
+								strcpy(l->file, l->path);
 						}
 					}
 				} else if (lex_many_temp(l, lex_alpha)) {
@@ -882,6 +886,8 @@ static void lexer_init(Lexer *l, TextStream *ts)
 	strncpy(l->path, "", 255);
 	vec_init(&l->tok_temp);
 
+	l->file[0] = 0;
+
 	lexer_next(l);
 }
 
@@ -908,6 +914,11 @@ void lexer_delete(Lexer *l)
 const char *lexer_report_path(Lexer *l)
 {
 	return l->path;
+}
+
+const char *lexer_report_file(Lexer *l)
+{
+	return l->file;
 }
 
 int lexer_report_line(Lexer *l)

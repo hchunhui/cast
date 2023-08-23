@@ -377,6 +377,7 @@ static int main1(const char *file)
 	StmtBLOCK *translation_unit = parse_translation_unit(p);
 #endif
 	if (translation_unit) {
+		fprintf(stderr, "cast: preprocessing %s\n", lexer_report_file(l));
 #ifdef __CAST_MANAGED__
 		__managed_patch(ctx, translation_unit);
 		translation_unit = __managed_elim_unused(ctx, translation_unit);
