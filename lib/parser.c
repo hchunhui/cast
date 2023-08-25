@@ -942,6 +942,7 @@ static int parse_declarator0(Parser *p, Declarator *d)
 			if (match(p, ')')) {
 				d->type = &n->h;
 				d->old_fundecl = true;
+				n->va_arg = true;
 			} else {
 				int ret = parse_oldfunargs1(p, d, n);
 				F(ret);

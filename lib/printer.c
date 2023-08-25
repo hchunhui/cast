@@ -220,12 +220,14 @@ static void type_print_annot(Type *type, bool simple)
 		printf("(");
 		Type *p;
 		int i;
+		bool flag = false;
 		avec_foreach(&((TypeFUN *) type)->at, p, i) {
 			if (i) printf(", ");
 			type_print_annot(p, simple);
+			flag = true;
 		}
 		if (((TypeFUN *) type)->va_arg)
-			printf(", ...");
+			printf("%s...", flag ? ", " : "");
 		printf(") -> ");
 		type_print_annot(((TypeFUN *) type)->rt, simple);
 		break;
@@ -429,11 +431,12 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 				attrs_print(p1->ext.gcc_attribute);
 			}
 		}
+		if (type->va_arg)
+			printf(", ...");
 	} else {
-		printf("void");
+		if (!type->va_arg)
+			printf("void");
 	}
-	if (type->va_arg)
-		printf(", ...");
 	printf(")");
 	type_print_declarator2(rt);
 }
