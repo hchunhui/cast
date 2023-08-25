@@ -404,6 +404,60 @@ static unsigned int lex_char(Lexer *l)
 	}
 	return 256;
 }
+
+static bool lex_raw_stringbody(Lexer *l, vec_char_t *dst)
+{
+	char c = P;
+	if (c == '"') {
+		N;
+		char delim[32];
+		delim[0] = ')';
+		int n = 1;
+		bool found = false;
+		while (true) {
+			c = P;
+			if (c == 0) {
+				return false;
+			}
+			N;
+			if (c == '(') {
+				found = true;
+				break;
+			}
+			if (c != ')' && c != '"' && n < 32) {
+				delim[n++] = c;
+			} else {
+				return false;
+			}
+		}
+		if (found) {
+			int m = 0;
+			while ((c = P)) {
+				N;
+				if (c == delim[m]) {
+					m++;
+				} else {
+					for (int i = 0; i < m; i++)
+						vec_push(dst, delim[i]);
+					if (c == delim[0]) {
+						m = 1;
+					} else {
+						vec_push(dst, c);
+						m = 0;
+					}
+				}
+				if (m == n) {
+					c = P;
+					if (c == '"') {
+						N; vec_push(dst, 0);
+						return true;
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
 #undef N
 #undef P
 
@@ -703,7 +757,7 @@ static bool lex_0xfloat(Lexer *l)
 
 static bool lex_string_or_char(Lexer *l, int stype, int ctype)
 {
-	if (lex_one_ignore(l, lex_quote)) {
+	if (stype && lex_one_ignore(l, lex_quote)) {
 		vec_clear(&l->tok);
 		do {
 			if (!lex_stringbody(l, &l->tok) ||
@@ -720,11 +774,13 @@ static bool lex_string_or_char(Lexer *l, int stype, int ctype)
 		l->tok_type = stype;
 		return true;
 	}
-	int res = lex_char(l);
-	if (res != 256) {
-		l->tok_type = ctype;
-		l->u.char_cst = res;
-		return true;
+	if (ctype) {
+		int res = lex_char(l);
+		if (res != 256) {
+			l->tok_type = ctype;
+			l->u.char_cst = res;
+			return true;
+		}
 	}
 	return false;
 }
@@ -735,26 +791,55 @@ static bool lex_string_or_char_prefix(Lexer *l, const char *prefix)
 	if (c == '"' || c == '\'') {
 		int ctype = 0;
 		int stype = 0;
-		if (strcmp(prefix, "L") == 0) {
-			ctype = TOK_WCHAR_CST;
-			stype = TOK_WSTRING_CST;
-		}
-		if (strcmp(prefix, "u") == 0) {
-			ctype = TOK_WCHAR_CST_u;
-			stype = TOK_WSTRING_CST_u;
-		}
-		if (strcmp(prefix, "U") == 0) {
-			ctype = TOK_WCHAR_CST_U;
-			stype = TOK_WSTRING_CST_U;
-		}
-		if (strcmp(prefix, "u8") == 0) {
-			ctype = TOK_WCHAR_CST_u8;
-			stype = TOK_WSTRING_CST_u8;
-		}
-		if (ctype != 0) {
-			if (lex_string_or_char(l, stype, ctype)) {
-				return true;
+		bool raw = false;
+		switch(prefix[0]) {
+		case 'L':
+			raw = (prefix[1] == 'R' && prefix[2] == 0);
+			if (raw || prefix[1] == 0) {
+				ctype = TOK_WCHAR_CST;
+				stype = TOK_WSTRING_CST;
 			}
+			break;
+		case 'u':
+			raw = (prefix[1] == 'R' && prefix[2] == 0);
+			if (raw || prefix[1] == 0) {
+				ctype = TOK_WCHAR_CST_u;
+				stype = TOK_WSTRING_CST_u;
+			}
+			if (prefix[1] == '8') {
+				raw = (prefix[2] == 'R' && prefix[3] == 0);
+				if (raw || prefix[2] == 0) {
+					ctype = TOK_WCHAR_CST_u8;
+					stype = TOK_WSTRING_CST_u8;
+				}
+			}
+			break;
+		case 'U':
+			raw = (prefix[1] == 'R' && prefix[2] == 0);
+			if (raw || prefix[1] == 0) {
+				ctype = TOK_WCHAR_CST;
+				stype = TOK_WSTRING_CST;
+			}
+			break;
+		case 'R':
+			raw = (prefix[1] == 0);
+			if (raw) {
+				ctype = 0;
+				stype = TOK_STRING_CST;
+			}
+			break;
+		}
+		if (raw) { // gcc extension
+			vec_clear(&l->tok);
+			if (lex_raw_stringbody(l, &l->tok)) {
+				l->tok_type = stype;
+			} else {
+				l->tok_type = TOK_ERROR;
+			}
+			return true;
+		}
+		if (lex_string_or_char(l, stype, ctype)) {
+			return true;
 		}
 	}
 	return false;
