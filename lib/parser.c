@@ -6,8 +6,10 @@
 #include <stdio.h>
 #include "map.h"
 
-#define SYM_IDENT 1
-#define SYM_TYPE 2
+enum {
+	SYM_IDENT = 1,
+	SYM_TYPE  = 2,
+};
 
 struct scope_item {
 	struct scope_item *next;

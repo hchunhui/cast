@@ -2,21 +2,25 @@
 #define TREE_H
 
 #include <stdbool.h>
-#define DFLAG_EXTERN 1
-#define DFLAG_STATIC 2
-#define DFLAG_INLINE 4
-#define DFLAG_THREADLOCAL 8
-#define DFLAG_NORETURN 16
-#define DFLAG_REGISTER 32
-#define DFLAG_MANAGED (1<<31)
+enum {
+	DFLAG_EXTERN      = 1,
+	DFLAG_STATIC      = 2,
+	DFLAG_INLINE      = 4,
+	DFLAG_THREADLOCAL = 8,
+	DFLAG_NORETURN    = 16,
+	DFLAG_REGISTER    = 32,
+	DFLAG_MANAGED     = (1<<31),
+};
 
-#define TFLAG_CONST 1
-#define TFLAG_VOLATILE 2
-#define TFLAG_RESTRICT 4
-#define TFLAG_ARRAY_STATIC 8
-#define TFLAG_ATOMIC 16
-#define TFLAG_COMPLEX 32
-#define TFLAG_IMAGINARY 64
+enum {
+	TFLAG_CONST        = 1,
+	TFLAG_VOLATILE     = 2,
+	TFLAG_RESTRICT     = 4,
+	TFLAG_ARRAY_STATIC = 8,
+	TFLAG_ATOMIC       = 16,
+	TFLAG_COMPLEX      = 32,
+	TFLAG_IMAGINARY    = 64,
+};
 
 typedef struct EnumList_ EnumList;
 
@@ -258,9 +262,11 @@ StmtDECLS *stmtDECLS();
 void stmtDECLS_append(StmtDECLS *decls, Stmt *i);
 END_MANAGED
 
-#define ASM_FLAG_VOLATILE 1
-#define ASM_FLAG_INLINE   2
-#define ASM_FLAG_GOTO     4
+enum {
+	ASM_FLAG_VOLATILE = 1,
+	ASM_FLAG_INLINE   = 2,
+	ASM_FLAG_GOTO     = 4,
+};
 
 typedef struct ASMOper_ {
 	const char *symbol;
