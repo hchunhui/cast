@@ -701,6 +701,65 @@ static bool lex_0xfloat(Lexer *l)
 	return false;
 }
 
+static bool lex_string_or_char(Lexer *l, int stype, int ctype)
+{
+	if (lex_one_ignore(l, lex_quote)) {
+		vec_clear(&l->tok);
+		do {
+			if (!lex_stringbody(l, &l->tok) ||
+			    !lex_one_ignore(l, lex_quote)) {
+				l->tok_type = TOK_ERROR;
+				return true;
+			}
+			if (skip_spaces(l) != 0) {
+				l->tok_type = TOK_ERROR;
+				return true;
+			}
+		} while (lex_one_ignore(l, lex_quote));
+		vec_push(&l->tok, 0);
+		l->tok_type = stype;
+		return true;
+	}
+	int res = lex_char(l);
+	if (res != 256) {
+		l->tok_type = ctype;
+		l->u.char_cst = res;
+		return true;
+	}
+	return false;
+}
+
+static bool lex_string_or_char_prefix(Lexer *l, const char *prefix)
+{
+	char c = text_stream_peek(l->ts);
+	if (c == '"' || c == '\'') {
+		int ctype = 0;
+		int stype = 0;
+		if (strcmp(prefix, "L") == 0) {
+			ctype = TOK_WCHAR_CST;
+			stype = TOK_WSTRING_CST;
+		}
+		if (strcmp(prefix, "u") == 0) {
+			ctype = TOK_WCHAR_CST_u;
+			stype = TOK_WSTRING_CST_u;
+		}
+		if (strcmp(prefix, "U") == 0) {
+			ctype = TOK_WCHAR_CST_U;
+			stype = TOK_WSTRING_CST_U;
+		}
+		if (strcmp(prefix, "u8") == 0) {
+			ctype = TOK_WCHAR_CST_u8;
+			stype = TOK_WSTRING_CST_u8;
+		}
+		if (ctype != 0) {
+			if (lex_string_or_char(l, stype, ctype)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 void lexer_next(Lexer *l)
 {
 	int tt;
@@ -715,52 +774,9 @@ void lexer_next(Lexer *l)
 	if (lex_one(l, lex_alpha_)) {
 		lex_many(l, lex_alphadigit_);
 		vec_push(&l->tok, 0);
-
-		int cprefix = 0;
-		int sprefix = 0;
-		if (strcmp(l->tok.data, "L") == 0) {
-			cprefix = TOK_WCHAR_CST;
-			sprefix = TOK_WSTRING_CST;
+		if (lex_string_or_char_prefix(l, l->tok.data)) {
+			return;
 		}
-		if (strcmp(l->tok.data, "u") == 0) {
-			cprefix = TOK_WCHAR_CST_u;
-			sprefix = TOK_WSTRING_CST_u;
-		}
-		if (strcmp(l->tok.data, "U") == 0) {
-			cprefix = TOK_WCHAR_CST_U;
-			sprefix = TOK_WSTRING_CST_U;
-		}
-		if (strcmp(l->tok.data, "u8") == 0) {
-			cprefix = TOK_WCHAR_CST_u8;
-			sprefix = TOK_WSTRING_CST_u8;
-		}
-		if (cprefix != 0) {
-			// WIDE
-			if (lex_one_ignore(l, lex_quote)) {
-				vec_clear(&l->tok);
-				do {
-					if (!lex_stringbody(l, &l->tok) ||
-					    !lex_one_ignore(l, lex_quote)) {
-						l->tok_type = TOK_ERROR;
-						return;
-					}
-					if (skip_spaces(l) != 0) {
-						l->tok_type = TOK_ERROR;
-						return;
-					}
-				} while (lex_one_ignore(l, lex_quote));
-				vec_push(&l->tok, 0);
-				l->tok_type = sprefix;
-				return;
-			}
-			int res = lex_char(l);
-			if (res != 256) {
-				l->tok_type = cprefix;
-				l->u.char_cst = res;
-				return;
-			}
-		}
-
 		int *type = map_get(&l->kws, l->tok.data);
 		if (type) {
 			l->tok_type = *type;
@@ -813,27 +829,7 @@ void lexer_next(Lexer *l)
 			l->tok_type = type;
 			return;
 		}
-		if (lex_one_ignore(l, lex_quote)) {
-			vec_clear(&l->tok);
-			do {
-				if (!lex_stringbody(l, &l->tok) ||
-				    !lex_one_ignore(l, lex_quote)) {
-					l->tok_type = TOK_ERROR;
-					return;
-				}
-				if (skip_spaces(l) != 0) {
-					l->tok_type == TOK_ERROR;
-					return;
-				}
-			} while (lex_one_ignore(l, lex_quote));
-			vec_push(&l->tok, 0);
-			l->tok_type = TOK_STRING_CST;
-			return;
-		}
-		int res = lex_char(l);
-		if (res != 256) {
-			l->tok_type = TOK_CHAR_CST;
-			l->u.char_cst = res;
+		if (lex_string_or_char(l, TOK_STRING_CST, TOK_CHAR_CST)) {
 			return;
 		}
 		l->tok_type = TOK_ERROR;
