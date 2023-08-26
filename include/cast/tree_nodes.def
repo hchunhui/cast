@@ -45,6 +45,7 @@ EXPR(VAARG,     Expr *, ap, Type *, type)
 EXPR(VAEND,     Expr *, ap)
 EXPR(OFFSETOF,  Type *, type, Expr *, mem)
 EXPR(TYPESCOMPATIBLE,  Type *, type1, Type *, type2)
+EXPR(TYPENAME,  Type *, type) // private extension
 
 STMT(EXPR,  Expr *, expr)
 STMT(IF,    Expr *, cond, Stmt *, body1, Stmt *, body2)

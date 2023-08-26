@@ -202,6 +202,14 @@ static Expr *parse_ident_or_builtin(Parser *p, const char *id)
 	Expr *e = parse_builtin_gnu(p, id);
 	if (e)
 		return e;
+
+	if (strcmp(id, "__typename__") == 0) {
+		Type *type;
+		F(match(p, '('));
+		F(type = parse_type(p));
+		F(match(p, ')'));
+		return exprTYPENAME(type);
+	}
 	if (symlookup(p, id) != SYM_IDENT)
 		return NULL;
 	return exprIDENT(id);

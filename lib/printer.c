@@ -830,6 +830,13 @@ static void expr_print(Expr *h, bool simple)
 		printf(")");
 		break;
 	}
+	case EXPR_TYPENAME: {
+		ExprTYPENAME *e = (ExprTYPENAME *) h;
+		printf("0 /* __typename__( ");
+		type_print_vardecl(0, e->type, "", simple);
+		printf(") */");
+		break;
+	}
 	}
 }
 
