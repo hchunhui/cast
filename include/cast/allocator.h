@@ -4,9 +4,11 @@
 #ifdef __CAST_MANAGED__
 #define BEGIN_MANAGED __managed {
 #define END_MANAGED }
+#define CALL_MANAGED(f, ...) __managed_##f(__VA_ARGS__)
 #else
 #define BEGIN_MANAGED
 #define END_MANAGED
+#define CALL_MANAGED(f, a, ...) f(__VA_ARGS__)
 #endif
 
 typedef struct Allocator_ Allocator;

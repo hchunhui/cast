@@ -371,18 +371,12 @@ static int main1(const char *file)
 
 	Allocator *a = allocator_new();
 	Context *ctx = context_new(a);
-#ifdef __CAST_MANAGED__
-	StmtBLOCK *translation_unit = __managed_parse_translation_unit(ctx, p);
-#else
-	StmtBLOCK *translation_unit = parse_translation_unit(p);
-#endif
+	StmtBLOCK *translation_unit = CALL_MANAGED(parse_translation_unit, ctx, p);
 	if (translation_unit) {
 		fprintf(stderr, "cast: preprocessing %s\n", lexer_report_file(l));
+		CALL_MANAGED(patch, ctx, translation_unit);
 #ifdef __CAST_MANAGED__
-		__managed_patch(ctx, translation_unit);
-		translation_unit = __managed_elim_unused(ctx, translation_unit);
-#else
-		patch(translation_unit);
+		translation_unit = CALL_MANAGED(elim_unused, ctx, translation_unit);
 #endif
 		print_translation_unit(translation_unit);
 	} else {
