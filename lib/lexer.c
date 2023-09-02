@@ -405,6 +405,38 @@ static unsigned int lex_char(Lexer *l)
 	return 256;
 }
 
+static bool skip_comment(Lexer *l)
+{
+	if (P == '/') {
+		N; char c = P;
+		if (c == '/') {
+			N; while (P != '\n') {
+				N;
+			}
+			N;
+			l->line++;
+			l->hol = true;
+			return true;
+		} else if (c == '*') {
+			N; do {
+				while ((c = P) != '*') {
+					if (c == '\n') {
+						l->line++;
+						l->hol = true;
+					}
+					N;
+				}
+				N;
+			} while (P != '/');
+			N;
+			return true;
+		} else {
+			U; return false;
+		}
+	}
+	return false;
+}
+
 static bool lex_raw_stringbody(Lexer *l, vec_char_t *dst)
 {
 	char c = P;
@@ -540,6 +572,8 @@ static int skip_spaces(Lexer *l)
 {
 	while (true) {
 		lex_many_ignore(l, lex_space);
+		if (skip_comment(l))
+			continue;
 		if (l->hol) {
 			if (lex_one_ignore(l, lex_sharp)) {
 				lex_many_ignore(l, lex_space);
