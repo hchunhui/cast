@@ -512,6 +512,7 @@ LEX(alpha, ALPHA)
 LEX(alpha_, ALPHA || c == '_')
 LEX(alphadigit_, ALPHA || DIGIT || c == '_')
 LEX(digit, DIGIT)
+LEX(dsep, c == '\'')
 
 LEX(space, c == ' ' || c == '\t' || \
     c == '\r' || c == '\v' || c == '\f')
@@ -567,6 +568,17 @@ static bool lex_##name(Lexer *l, lex_func_t lex) \
 LEXM(many, one)
 LEXM(many_temp, one_temp)
 LEXM(many_ignore, one_ignore)
+
+static bool lex_many_dsep(Lexer *l, lex_func_t lex)
+{
+	while (lex_one_ignore(l, lex_dsep)) {
+		if (!lex_many(l, lex)) {
+			l->tok_type = TOK_ERROR;
+			return false;
+		}
+	}
+	return true;
+}
 
 static int skip_spaces(Lexer *l)
 {
@@ -710,9 +722,13 @@ static bool lex_float(Lexer *l)
 {
 	if (lex_one(l, lex_dot)) {
 		if (lex_many(l, lex_digit)) {
+			if (!lex_many_dsep(l, lex_digit))
+				return true;
 			if (lex_one(l, lex_eE)) {
 				lex_one(l, lex_sign);
 				if (lex_many(l, lex_digit)) {
+					if (!lex_many_dsep(l, lex_digit))
+						return true;
 					vec_push(&l->tok, 0);
 				} else {
 					l->tok_type = TOK_ERROR;
@@ -730,6 +746,8 @@ static bool lex_float(Lexer *l)
 				if (lex_one(l, lex_eE)) {
 					lex_one(l, lex_sign);
 					if (lex_many(l, lex_digit)) {
+						if (!lex_many_dsep(l, lex_digit))
+							return true;
 						vec_push(&l->tok, 0);
 					} else {
 						l->tok_type = TOK_ERROR;
@@ -747,6 +765,8 @@ static bool lex_float(Lexer *l)
 			if (lex_one(l, lex_eE)) {
 				lex_one(l, lex_sign);
 				if (lex_many(l, lex_digit)) {
+					if (!lex_many_dsep(l, lex_digit))
+						return true;
 					vec_push(&l->tok, 0);
 				} else {
 					l->tok_type = TOK_ERROR;
@@ -766,9 +786,13 @@ static bool lex_0xfloat(Lexer *l)
 {
 	if (lex_one(l, lex_dot)) {
 		lex_many(l, lex_hex);
+		if (!lex_many_dsep(l, lex_hex))
+			return true;
 		if (lex_one(l, lex_pP)) {
 			lex_one(l, lex_sign);
 			if (lex_many(l, lex_digit)) {
+				if (!lex_many_dsep(l, lex_digit))
+					return true;
 				vec_push(&l->tok, 0);
 				handle_float_cst(l);
 				return true;
@@ -779,6 +803,8 @@ static bool lex_0xfloat(Lexer *l)
 	} else if (lex_one(l, lex_pP)) {
 		lex_one(l, lex_sign);
 		if (lex_many(l, lex_digit)) {
+			if (!lex_many_dsep(l, lex_digit))
+				return true;
 			vec_push(&l->tok, 0);
 			handle_float_cst(l);
 			return true;
@@ -905,6 +931,8 @@ void lexer_next(Lexer *l)
 	} else if (lex_one(l, lex_0)) {
 		if (lex_one(l, lex_xX)) {
 			if (lex_many(l, lex_hex)) {
+				if (!lex_many_dsep(l, lex_hex))
+					return;
 				if (!lex_0xfloat(l)) {
 					vec_push(&l->tok, 0);
 					handle_int_cst(l, 2, 16);
@@ -914,18 +942,27 @@ void lexer_next(Lexer *l)
 			}
 		} else if (lex_one(l, lex_bB)) { // gcc extension
 			if (lex_many(l, lex_bin)) {
+				if (!lex_many_dsep(l, lex_bin))
+					return;
 				vec_push(&l->tok, 0);
 				handle_int_cst(l, 2, 2);
 			} else {
 				l->tok_type = TOK_ERROR;
 			}
 		} else {
+			bool exist_dsep = lex_one_ignore(l, lex_dsep);
 			if (lex_many(l, lex_digit)) {
+				if (!lex_many_dsep(l, lex_digit))
+					return;
 				if (!lex_float(l)) {
 					vec_push(&l->tok, 0);
 					handle_int_cst(l, 1, 8);
 				}
 			} else {
+				if (exist_dsep) {
+					l->tok_type = TOK_ERROR;
+					return;
+				}
 				if (!lex_float(l)) {
 					vec_push(&l->tok, 0);
 					handle_int_cst(l, 0, 10); // zero
@@ -933,6 +970,8 @@ void lexer_next(Lexer *l)
 			}
 		}
 	} else if (lex_many(l, lex_digit)) {
+		if (!lex_many_dsep(l, lex_digit))
+			return;
 		if (!lex_float(l)) {
 			vec_push(&l->tok, 0);
 			handle_int_cst(l, 0, 10);
