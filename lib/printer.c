@@ -4,6 +4,11 @@
 #include <assert.h>
 #include <math.h>
 
+struct Printer_
+{
+	bool print_type_annot;
+};
+
 static void decl_flags_print(unsigned int flags)
 {
 	if (flags & DFLAG_EXTERN)
@@ -54,7 +59,7 @@ static void type_flags_print(Type *t)
 		printf("_Imaginary ");
 }
 
-static void attrs_print(Attribute *attrs);
+static void attrs_print(Printer *self, Attribute *attrs);
 
 static void lp()
 {
@@ -86,56 +91,56 @@ static bool expr_isprim(Expr *h)
 	}
 }
 
-static void expr_print(Expr *h, bool simple);
-static void expr_print1(Expr *h, bool simple)
+static void expr_print(Printer *self, Expr *h, bool simple);
+static void expr_print1(Printer *self, Expr *h, bool simple)
 {
 	if (expr_isprim(h) || h->type == EXPR_INIT) {
-		expr_print(h, simple);
+		expr_print(self, h, simple);
 	} else {
-		lp(); expr_print(h, simple); rp();
+		lp(); expr_print(self, h, simple); rp();
 	}
 }
 
-static void expr_print2(Expr *h, bool simple)
+static void expr_print2(Printer *self, Expr *h, bool simple)
 {
 	if (h->type == EXPR_BOP &&
 	    ((ExprBOP *) h)->op == EXPR_OP_COMMA) {
-		lp(); expr_print(h, simple); rp();
+		lp(); expr_print(self, h, simple); rp();
 	} else {
-		expr_print(h, simple);
+		expr_print(self, h, simple);
 	}
 }
 
-static void expr_print_cond(Expr *h, bool simple)
+static void expr_print_cond(Printer *self, Expr *h, bool simple)
 {
 	if (h->type == EXPR_BOP &&
 	    ((ExprBOP *) h)->op == EXPR_OP_ASSIGN) {
-		lp(); expr_print(h, simple); rp();
+		lp(); expr_print(self, h, simple); rp();
 	} else {
-		expr_print(h, simple);
+		expr_print(self, h, simple);
 	}
 }
 
-static void print_memlist(Expr *h)
+static void print_memlist(Printer *self, Expr *h)
 {
 	if (h->type == EXPR_MEM) {
 		ExprMEM *m = (ExprMEM *) h;
-		print_memlist(m->a);
+		print_memlist(self, m->a);
 		printf(".%s", m->id);
 	} else if (h->type == EXPR_BOP &&
 		   ((ExprBOP *) h)->op == EXPR_OP_IDX) {
 		ExprBOP *i = (ExprBOP *) h;
-		print_memlist(i->a);
+		print_memlist(self, i->a);
 		printf("[");
-		expr_print(i->b, false);
+		expr_print(self, i->b, false);
 		printf("]");
 	} else {
-		expr_print(h, false);
+		expr_print(self, h, false);
 	}
 }
 
-static void stmt_print(Stmt *h, int level);
-static void type_print_annot(Type *type, bool simple)
+static void stmt_print(Printer *self, Stmt *h, int level);
+static void type_print_annot(Printer *self, Type *type, bool simple)
 {
 	type_flags_print(type);
 	switch(type->type) {
@@ -202,17 +207,17 @@ static void type_print_annot(Type *type, bool simple)
 	}
 	case TYPE_PTR:
 		printf("pointer(");
-		type_print_annot(((TypePTR *) type)->t, simple);
+		type_print_annot(self, ((TypePTR *) type)->t, simple);
 		printf(")");
 		break;
 	case TYPE_ARRAY:
 		printf("array(");
-		type_print_annot(((TypeARRAY *) type)->t, simple);
+		type_print_annot(self, ((TypeARRAY *) type)->t, simple);
 		printf(", ");
 		if (((TypeARRAY *) type)->n) {
 			if (((TypeARRAY *) type)->flags & TFLAG_ARRAY_STATIC)
 				printf("static ");
-			expr_print2(((TypeARRAY *) type)->n, simple);
+			expr_print2(self, ((TypeARRAY *) type)->n, simple);
 		}
 		printf(")");
 		break;
@@ -223,13 +228,13 @@ static void type_print_annot(Type *type, bool simple)
 		bool flag = false;
 		avec_foreach(&((TypeFUN *) type)->at, p, i) {
 			if (i) printf(", ");
-			type_print_annot(p, simple);
+			type_print_annot(self, p, simple);
 			flag = true;
 		}
 		if (((TypeFUN *) type)->va_arg)
 			printf("%s...", flag ? ", " : "");
 		printf(") -> ");
-		type_print_annot(((TypeFUN *) type)->rt, simple);
+		type_print_annot(self, ((TypeFUN *) type)->rt, simple);
 		break;
 	case TYPE_TYPEDEF:
 		printf("%s", ((TypeTYPEDEF *) type)->name);
@@ -239,7 +244,7 @@ static void type_print_annot(Type *type, bool simple)
 		printf("%s", t->is_union ? "union" : "struct");
 		if (t->attrs) {
 			printf(" ");
-			attrs_print(t->attrs);
+			attrs_print(self, t->attrs);
 		}
 		if (t->tag) printf(" %s", t->tag);
 		if (t->decls) {
@@ -247,7 +252,7 @@ static void type_print_annot(Type *type, bool simple)
 				printf(" {/* ... */}");
 			} else {
 				printf(" ");
-				stmt_print((Stmt *) t->decls, 0);
+				stmt_print(self, (Stmt *) t->decls, 0);
 			}
 		}
 		break;
@@ -267,11 +272,11 @@ static void type_print_annot(Type *type, bool simple)
 					printf("%s", p->id);
 					if (p->attr) {
 						printf(" ");
-						attrs_print(p->attr);
+						attrs_print(self, p->attr);
 					}
 					if (p->val) {
 						printf(" = ");
-						expr_print1(p->val, simple);
+						expr_print1(self, p->val, simple);
 						printf(",\n");
 					} else {
 						printf(",\n");
@@ -285,7 +290,7 @@ static void type_print_annot(Type *type, bool simple)
 	case TYPE_TYPEOF: {
 		TypeTYPEOF *t = (TypeTYPEOF *) type;
 		printf("__typeof__(");
-		expr_print(t->e, simple);
+		expr_print(self, t->e, simple);
 		printf(")");
 		break;
 	}
@@ -312,19 +317,19 @@ static Type* type_get_basic(Type *type)
 	}
 }
 
-static void type_print_declarator1(Type *type)
+static void type_print_declarator1(Printer *self, Type *type)
 {
 	switch(type->type) {
 	case TYPE_FUN:
-		type_print_declarator1(((TypeFUN *) type)->rt);
+		type_print_declarator1(self, ((TypeFUN *) type)->rt);
 		return;
 	case TYPE_PTR:
-		type_print_declarator1(((TypePTR *) type)->t);
+		type_print_declarator1(self, ((TypePTR *) type)->t);
 		printf("(* ");
 		type_flags_print(type);
 		return;
 	case TYPE_ARRAY:
-		type_print_declarator1(((TypeARRAY *) type)->t);
+		type_print_declarator1(self, ((TypeARRAY *) type)->t);
 		printf("(");
 		return;
 	default:
@@ -332,9 +337,9 @@ static void type_print_declarator1(Type *type)
 	}
 }
 
-static void type_print_vardecl(unsigned int flags, Type *type, const char *name,
+static void type_print_vardecl(Printer *self, unsigned int flags, Type *type, const char *name,
 			       bool simple);
-static void type_print_declarator2(Type *type)
+static void type_print_declarator2(Printer *self, Type *type)
 {
 	switch(type->type) {
 	case TYPE_FUN:
@@ -343,21 +348,21 @@ static void type_print_declarator2(Type *type)
 		int i;
 		avec_foreach(&((TypeFUN *) type)->at, p, i) {
 			if (i) printf(", ");
-			type_print_annot(type_get_basic(p), false);
+			type_print_annot(self, type_get_basic(p), false);
 			printf(" ");
-			type_print_declarator1(p);
-			type_print_declarator2(p);
+			type_print_declarator1(self, p);
+			type_print_declarator2(self, p);
 		}
 		if (((TypeFUN *) type)->at.length == 0)
 			printf("void");
 		if (((TypeFUN *) type)->va_arg)
 			printf(", ...");
 		printf(")");
-		type_print_declarator2(((TypeFUN *) type)->rt);
+		type_print_declarator2(self, ((TypeFUN *) type)->rt);
 		return;
 	case TYPE_PTR:
 		printf(")");
-		type_print_declarator2(((TypePTR *) type)->t);
+		type_print_declarator2(self, ((TypePTR *) type)->t);
 		return;
 	case TYPE_ARRAY:
 		printf("[");
@@ -365,35 +370,35 @@ static void type_print_declarator2(Type *type)
 		if (((TypeARRAY *) type)->n) {
 			if (((TypeARRAY *) type)->flags & TFLAG_ARRAY_STATIC)
 				printf("static ");
-			expr_print1(((TypeARRAY *) type)->n, false);
+			expr_print1(self, ((TypeARRAY *) type)->n, false);
 		}
 		printf("])");
-		type_print_declarator2(((TypeARRAY *) type)->t);
+		type_print_declarator2(self, ((TypeARRAY *) type)->t);
 		return;
 	default:
 		return;
 	}
 }
 
-static void type_print_vardecl(unsigned int flags, Type *type, const char *name, bool simple)
+static void type_print_vardecl(Printer *self, unsigned int flags, Type *type, const char *name, bool simple)
 {
 	if (simple) {
-		type_print_annot(type, true);
+		type_print_annot(self, type, true);
 		return;
 	}
 	decl_flags_print(flags);
-	type_print_annot(type_get_basic(type), false);
+	type_print_annot(self, type_get_basic(type), false);
 	printf(" ");
-	type_print_declarator1(type);
+	type_print_declarator1(self, type);
 	if (name) {
 		printf("%s", name);
 	} else {
 		printf("/* unnamed */");
 	}
-	type_print_declarator2(type);
+	type_print_declarator2(self, type);
 }
 
-static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *args, const char *name, Attribute *attrs)
+static void type_print_fundecl(Printer *self, unsigned int flags, TypeFUN *type, StmtBLOCK *args, const char *name, Attribute *attrs)
 {
 	Type *rt = type->rt;
 	/*
@@ -407,12 +412,12 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 	decl_flags_print(flags);
 	// safe, because we don't declare multiple variables in one line
 	if (attrs) {
-		attrs_print(attrs);
+		attrs_print(self, attrs);
 		printf(" ");
 	}
-	type_print_annot(type_get_basic(rt), false);
+	type_print_annot(self, type_get_basic(rt), false);
 	printf(" ");
-	type_print_declarator1(rt);
+	type_print_declarator1(self, rt);
 	printf("%s(", name);
 	if (args) {
 		Stmt *p;
@@ -421,14 +426,14 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 			StmtVARDECL *p1 = (StmtVARDECL *) p;
 			if (i)
 				printf(", ");
-			type_print_vardecl(
+			type_print_vardecl(self,
 				p1->flags,
 				p1->type,
 				p1->name,
 				false);
 			if (p1->ext.gcc_attribute) {
 				printf(" ");
-				attrs_print(p1->ext.gcc_attribute);
+				attrs_print(self, p1->ext.gcc_attribute);
 			}
 		}
 		if (type->va_arg)
@@ -438,7 +443,7 @@ static void type_print_fundecl(unsigned int flags, TypeFUN *type, StmtBLOCK *arg
 			printf("void");
 	}
 	printf(")");
-	type_print_declarator2(rt);
+	type_print_declarator2(self, rt);
 }
 
 static const char *bopname(ExprBinOp op)
@@ -506,7 +511,7 @@ static void print_quoted(const char *v, int len)
 	}
 }
 
-static void expr_print(Expr *h, bool simple)
+static void expr_print(Printer *self, Expr *h, bool simple)
 {
 	switch (h->type) {
 	case EXPR_INT_CST: {
@@ -616,24 +621,24 @@ static void expr_print(Expr *h, bool simple)
 		if (e->a->type == EXPR_UOP) {
 			ExprUOP *ea = (ExprUOP *) (e->a);
 			if (ea->op == EXPR_OP_DEREF) {
-				expr_print1(ea->e, simple);
+				expr_print1(self, ea->e, simple);
 				printf(" -> %s", e->id);
 				break;
 			}
 		}
-		expr_print1(e->a, simple);
+		expr_print1(self, e->a, simple);
 		printf(" . %s", e->id);
 		break;
 	}
 	case EXPR_CALL: {
 		ExprCALL *e = (ExprCALL *) h;
-		expr_print1(e->func, simple);
+		expr_print1(self, e->func, simple);
 		printf("(");
 		Expr *p;
 		int i;
 		avec_foreach(&e->args, p, i) {
 			if (i) printf(", ");
-			expr_print2(p, simple);
+			expr_print2(self, p, simple);
 		}
 		printf(")");
 		break;
@@ -641,30 +646,30 @@ static void expr_print(Expr *h, bool simple)
 	case EXPR_BOP: {
 		ExprBOP *e = (ExprBOP *) h;
 		if (e->op == EXPR_OP_IDX) {
-			expr_print1(e->a, simple);
-			printf("["); expr_print(e->b, simple); printf("]");
+			expr_print1(self, e->a, simple);
+			printf("["); expr_print(self, e->b, simple); printf("]");
 		} else {
-			expr_print1(e->a, simple);
+			expr_print1(self, e->a, simple);
 			printf(" %s ", bopname(e->op));
-			expr_print1(e->b, simple);
+			expr_print1(self, e->b, simple);
 		}
 		break;
 	}
 	case EXPR_UOP: {
 		ExprUOP *e = (ExprUOP *) h;
 		switch (e->op) {
-		case EXPR_OP_NEG: printf("- "); expr_print1(e->e, simple); break;
-		case EXPR_OP_POS: printf("+ "); expr_print1(e->e, simple); break;
-		case EXPR_OP_NOT: printf("! "); expr_print1(e->e, simple); break;
-		case EXPR_OP_BNOT: printf("~ "); expr_print1(e->e, simple); break;
+		case EXPR_OP_NEG: printf("- "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_POS: printf("+ "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_NOT: printf("! "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_BNOT: printf("~ "); expr_print1(self, e->e, simple); break;
 
-		case EXPR_OP_ADDROF: printf("& "); expr_print1(e->e, simple); break;
-		case EXPR_OP_DEREF: printf("* "); expr_print1(e->e, simple); break;
+		case EXPR_OP_ADDROF: printf("& "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_DEREF: printf("* "); expr_print1(self, e->e, simple); break;
 
-		case EXPR_OP_PREINC: printf("++ "); expr_print1(e->e, simple); break;
-		case EXPR_OP_POSTINC: expr_print1(e->e, simple); printf(" ++"); break;
-		case EXPR_OP_PREDEC: printf("-- "); expr_print1(e->e, simple); break;
-		case EXPR_OP_POSTDEC: expr_print1(e->e, simple); printf(" --"); break;
+		case EXPR_OP_PREINC: printf("++ "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_POSTINC: expr_print1(self, e->e, simple); printf(" ++"); break;
+		case EXPR_OP_PREDEC: printf("-- "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_POSTDEC: expr_print1(self, e->e, simple); printf(" --"); break;
 
 		case EXPR_OP_ADDROFLABEL:
 			printf("&& %s", ((ExprIDENT * )e->e)->id); break;
@@ -674,37 +679,37 @@ static void expr_print(Expr *h, bool simple)
 	}
 	case EXPR_COND: {
 		ExprCOND *e = (ExprCOND *) h;
-		expr_print1(e->c, simple);
+		expr_print1(self, e->c, simple);
 		printf(" ? ");
 		if (e->a)
-			expr_print1(e->a, simple);
+			expr_print1(self, e->a, simple);
 		printf(" : ");
-		expr_print1(e->b, simple);
+		expr_print1(self, e->b, simple);
 		break;
 	}
 	case EXPR_CAST: {
 		ExprCAST *e = (ExprCAST *) h;
 		printf("(");
-		type_print_vardecl(0, e->t, "", simple);
+		type_print_vardecl(self, 0, e->t, "", simple);
 		if (e->e->type == EXPR_INIT) {
 			printf(") ");
-			expr_print(e->e, simple);
+			expr_print(self, e->e, simple);
 		} else {
 			printf(") ");
-			expr_print1(e->e, simple);
+			expr_print1(self, e->e, simple);
 		}
 		break;
 	}
 	case EXPR_SIZEOF: {
 		ExprSIZEOF *e = (ExprSIZEOF *) h;
 		printf("sizeof ");
-		expr_print1(e->e, simple);
+		expr_print1(self, e->e, simple);
 		break;
 	}
 	case EXPR_SIZEOFT: {
 		ExprSIZEOFT *e = (ExprSIZEOFT *) h;
 		printf("sizeof (");
-		type_print_vardecl(0, e->t, "", simple);
+		type_print_vardecl(self, 0, e->t, "", simple);
 		printf(")");
 		break;
 	}
@@ -713,11 +718,11 @@ static void expr_print(Expr *h, bool simple)
 		if (e->t->type == TYPE_TYPEOF) {
 			TypeTYPEOF *t = (TypeTYPEOF *) e->t;
 			printf("__alignof__(");
-			expr_print(t->e, simple);
+			expr_print(self, t->e, simple);
 			printf(")");
 		} else {
 			printf("_Alignof (");
-			type_print_vardecl(0, e->t, "", simple);
+			type_print_vardecl(self, 0, e->t, "", simple);
 			printf(")");
 		}
 		break;
@@ -735,7 +740,7 @@ static void expr_print(Expr *h, bool simple)
 					switch(d->type) {
 					case DES_INDEX:
 						printf("[");
-						expr_print(d->index, simple);
+						expr_print(self, d->index, simple);
 						printf("]");
 						break;
 					case DES_FIELD:
@@ -743,9 +748,9 @@ static void expr_print(Expr *h, bool simple)
 						break;
 					case DES_INDEXRANGE:
 						printf("[");
-						expr_print(d->index, simple);
+						expr_print(self, d->index, simple);
 						printf(" ... ");
-						expr_print(d->indexhigh, simple);
+						expr_print(self, d->indexhigh, simple);
 						printf("]");
 						break;
 					}
@@ -753,7 +758,7 @@ static void expr_print(Expr *h, bool simple)
 				}
 				printf(" = ");
 			}
-			expr_print2(p.value, simple);
+			expr_print2(self, p.value, simple);
 		}
 		printf("}");
 		break;
@@ -761,7 +766,7 @@ static void expr_print(Expr *h, bool simple)
 	case EXPR_VASTART: {
 		ExprVASTART *e = (ExprVASTART *) h;
 		printf("__builtin_va_start(");
-		expr_print2(e->ap, simple);
+		expr_print2(self, e->ap, simple);
 		printf(", ");
 		printf("%s ", e->last);
 		printf(")");
@@ -770,25 +775,25 @@ static void expr_print(Expr *h, bool simple)
 	case EXPR_VAARG: {
 		ExprVAARG *e = (ExprVAARG *) h;
 		printf("__builtin_va_arg(");
-		expr_print2(e->ap, simple);
+		expr_print2(self, e->ap, simple);
 		printf(", ");
-		type_print_vardecl(0, e->type, "", simple);
+		type_print_vardecl(self, 0, e->type, "", simple);
 		printf(")");
 		break;
 	}
 	case EXPR_VAEND: {
 		ExprVAEND *e = (ExprVAEND *) h;
 		printf("__builtin_va_end(");
-		expr_print1(e->ap, simple);
+		expr_print1(self, e->ap, simple);
 		printf(")");
 		break;
 	}
 	case EXPR_OFFSETOF: {
 		ExprOFFSETOF *e = (ExprOFFSETOF *) h;
 		printf("__builtin_offsetof( ");
-		type_print_vardecl(0, e->type, "", simple);
+		type_print_vardecl(self, 0, e->type, "", simple);
 		printf(", ");
-		print_memlist(e->mem);
+		print_memlist(self, e->mem);
 		printf(")");
 		break;
 	}
@@ -798,7 +803,7 @@ static void expr_print(Expr *h, bool simple)
 			printf("({/* ... */})");
 		else {
 			printf("(");
-			stmt_print((Stmt *) e->s, 0);
+			stmt_print(self, (Stmt *) e->s, 0);
 			printf(")");
 		}
 		break;
@@ -806,17 +811,17 @@ static void expr_print(Expr *h, bool simple)
 	case EXPR_GENERIC: {
 		ExprGENERIC *e = (ExprGENERIC *) h;
 		printf("_Generic(");
-		expr_print2(e->expr, simple);
+		expr_print2(self, e->expr, simple);
 		GENERICPair *item;
 		int i;
 		avec_foreach_ptr(&e->items, item, i) {
 			printf(", ");
 			if (item->type)
-				type_print_vardecl(0, item->type, "", simple);
+				type_print_vardecl(self, 0, item->type, "", simple);
 			else
 				printf("default");
 			printf(": ");
-			expr_print2(item->expr, simple);
+			expr_print2(self, item->expr, simple);
 		}
 		printf(")");
 		break;
@@ -824,16 +829,16 @@ static void expr_print(Expr *h, bool simple)
 	case EXPR_TYPESCOMPATIBLE: {
 		ExprTYPESCOMPATIBLE *e = (ExprTYPESCOMPATIBLE *) h;
 		printf("__builtin_types_compatible_p( ");
-		type_print_vardecl(0, e->type1, "", simple);
+		type_print_vardecl(self, 0, e->type1, "", simple);
 		printf(", ");
-		type_print_vardecl(0, e->type2, "", simple);
+		type_print_vardecl(self, 0, e->type2, "", simple);
 		printf(")");
 		break;
 	}
 	case EXPR_TYPENAME: {
 		ExprTYPENAME *e = (ExprTYPENAME *) h;
 		printf("0 /* __typename__( ");
-		type_print_vardecl(0, e->type, "", simple);
+		type_print_vardecl(self, 0, e->type, "", simple);
 		printf(") */");
 		break;
 	}
@@ -846,14 +851,14 @@ static void print_level(int level)
 		printf("    ");
 }
 
-static void stmt_printb(Stmt *h, int level)
+static void stmt_printb(Printer *self, Stmt *h, int level)
 {
 	if (h->type == STMT_BLOCK)
 		level--;
-	stmt_print(h, level);
+	stmt_print(self, h, level);
 }
 
-static void attrs_print(Attribute *attrs)
+static void attrs_print(Printer *self, Attribute *attrs)
 {
 	printf("__attribute__((");
 	for (Attribute *a = attrs; a; a = a->next) {
@@ -864,7 +869,7 @@ static void attrs_print(Attribute *attrs)
 			int i;
 			avec_foreach(&a->args, p, i) {
 				if (i) printf(", ");
-				expr_print2(p, false);
+				expr_print2(self, p, false);
 			}
 			printf(")");
 		}
@@ -874,7 +879,7 @@ static void attrs_print(Attribute *attrs)
 	printf("))");
 }
 
-static void stmt_print(Stmt *h, int level)
+static void stmt_print(Printer *self, Stmt *h, int level)
 {
 	if (h->type == STMT_PRAGMA) {
 		StmtPRAGMA *s = (StmtPRAGMA *) h;
@@ -892,20 +897,20 @@ static void stmt_print(Stmt *h, int level)
 	switch (h->type) {
 	case STMT_EXPR: {
 		StmtEXPR *s = (StmtEXPR *) h;
-		expr_print(s->expr, false);
+		expr_print(self, s->expr, false);
 		printf(";\n");
 		break;
 	}
 	case STMT_IF: {
 		StmtIF *s = (StmtIF *) h;
 		printf("if (");
-		expr_print_cond(s->cond, false);
+		expr_print_cond(self, s->cond, false);
 		printf(")\n");
-		stmt_printb(s->body1, level + 1);
+		stmt_printb(self, s->body1, level + 1);
 		if (s->body2) {
 			print_level(level);
 			printf("else\n");
-			stmt_printb(s->body2, level + 1);
+			stmt_printb(self, s->body2, level + 1);
 		}
 		printf("\n");
 		break;
@@ -913,32 +918,32 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_WHILE: {
 		StmtWHILE *s = (StmtWHILE *) h;
 		printf("while (");
-		expr_print_cond(s->cond, false);
+		expr_print_cond(self, s->cond, false);
 		printf(")\n");
-		stmt_printb(s->body, level + 1);
+		stmt_printb(self, s->body, level + 1);
 		printf("\n");
 		break;
 	}
 	case STMT_DO: {
 		StmtDO *s = (StmtDO *) h;
 		printf("do\n");
-		stmt_printb(s->body, level + 1);
+		stmt_printb(self, s->body, level + 1);
 		print_level(level);
 		printf("while (");
-		expr_print_cond(s->cond, false);
+		expr_print_cond(self, s->cond, false);
 		printf(");\n");
 		break;
 	}
 	case STMT_FOR: {
 		StmtFOR *s = (StmtFOR *) h;
 		printf("for (");
-		if (s->init) expr_print(s->init, false);
+		if (s->init) expr_print(self, s->init, false);
 		printf("; ");
-		if (s->cond) expr_print_cond(s->cond, false);
+		if (s->cond) expr_print_cond(self, s->cond, false);
 		printf("; ");
-		if (s->step) expr_print(s->step, false);
+		if (s->step) expr_print(self, s->step, false);
 		printf(")\n");
-		stmt_printb(s->body, level + 1);
+		stmt_printb(self, s->body, level + 1);
 		printf("\n");
 		break;
 	}
@@ -946,23 +951,23 @@ static void stmt_print(Stmt *h, int level)
 		StmtFOR99 *s = (StmtFOR99 *) h;
 		if (s->init->type == STMT_VARDECL) {
 			printf("for (");
-			stmt_print(s->init, 0);
-			if (s->cond) expr_print_cond(s->cond, false);
+			stmt_print(self, s->init, 0);
+			if (s->cond) expr_print_cond(self, s->cond, false);
 			printf("; ");
-			if (s->step) expr_print(s->step, false);
+			if (s->step) expr_print(self, s->step, false);
 			printf(")\n");
-			stmt_printb(s->body, level + 1);
+			stmt_printb(self, s->body, level + 1);
 			printf("\n");
 		} else if (s->init->type == STMT_DECLS) {
 			printf("{\n");
-			stmt_print(s->init, level);
+			stmt_print(self, s->init, level);
 			print_level(level);
 			printf("for (; ");
-			if (s->cond) expr_print_cond(s->cond, false);
+			if (s->cond) expr_print_cond(self, s->cond, false);
 			printf("; ");
-			if (s->step) expr_print(s->step, false);
+			if (s->step) expr_print(self, s->step, false);
 			printf(")\n");
-			stmt_printb(s->body, level + 1);
+			stmt_printb(self, s->body, level + 1);
 			print_level(level);
 			printf("}\n");
 		} else {
@@ -981,30 +986,30 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_SWITCH: {
 		StmtSWITCH *s = (StmtSWITCH *) h;
 		printf("switch (");
-		expr_print(s->expr, false);
+		expr_print(self, s->expr, false);
 		printf(")\n");
-		stmt_printb(s->body, level + 1);
+		stmt_printb(self, s->body, level + 1);
 		printf("\n");
 		break;
 	}
 	case STMT_CASE: {
 		StmtCASE *s = (StmtCASE *) h;
 		printf("case ");
-		expr_print1(s->expr, false);
+		expr_print1(self, s->expr, false);
 		printf(":\n");
-		stmt_print(s->stmt, level + 1);
+		stmt_print(self, s->stmt, level + 1);
 		break;
 	}
 	case STMT_DEFAULT: {
 		StmtDEFAULT *s = (StmtDEFAULT *) h;
 		printf("default:\n");
-		stmt_print(s->stmt, level + 1);
+		stmt_print(self, s->stmt, level + 1);
 		break;
 	}
 	case STMT_LABEL: {
 		StmtLABEL *s = (StmtLABEL *) h;
 		printf("%s:\n", s->name);
-		stmt_print(s->stmt, level + 1);
+		stmt_print(self, s->stmt, level + 1);
 		break;
 	}
 	case STMT_GOTO: {
@@ -1016,7 +1021,7 @@ static void stmt_print(Stmt *h, int level)
 		StmtRETURN *s = (StmtRETURN *) h;
 		if (s->expr) {
 			printf("return ");
-			expr_print1(s->expr, false);
+			expr_print1(self, s->expr, false);
 			printf(";\n");
 		} else {
 			printf("return;\n");
@@ -1028,7 +1033,7 @@ static void stmt_print(Stmt *h, int level)
 		printf("/*skip*/");
 		if (s->attrs) {
 			printf(" ");
-			attrs_print(s->attrs);
+			attrs_print(self, s->attrs);
 		}
 		printf(";\n");
 		break;
@@ -1039,7 +1044,7 @@ static void stmt_print(Stmt *h, int level)
 		Stmt *p;
 		int i;
 		avec_foreach(&s->items, p, i) {
-			stmt_print(p, level + 1);
+			stmt_print(self, p, level + 1);
 		}
 		print_level(level);
 		printf("}\n");
@@ -1047,14 +1052,16 @@ static void stmt_print(Stmt *h, int level)
 	}
 	case STMT_FUNDECL: {
 		StmtFUNDECL *s = (StmtFUNDECL *) h;
-		printf("// fundecl: %s, type: ", s->name);
-		type_print_annot(&s->type->h, true);
-		printf("\n");
-		print_level(level);
-		type_print_fundecl(s->flags, s->type, s->args, s->name, s->ext.gcc_attribute);
+		if (self->print_type_annot) {
+			printf("// fundecl: %s, type: ", s->name);
+			type_print_annot(self, &s->type->h, true);
+			printf("\n");
+			print_level(level);
+		}
+		type_print_fundecl(self, s->flags, s->type, s->args, s->name, s->ext.gcc_attribute);
 		if (s->body) {
 			printf("\n");
-			stmt_print(&s->body->h, level);
+			stmt_print(self, &s->body->h, level);
 		} else {
 			printf(";\n");
 		}
@@ -1062,31 +1069,33 @@ static void stmt_print(Stmt *h, int level)
 	}
 	case STMT_VARDECL: {
 		StmtVARDECL *s = (StmtVARDECL *) h;
-		if (s->name)
-			printf("// vardecl: %s, type: ", s->name);
-		else
-			printf("// vardecl: /* unnamed */, type: ");
-		type_print_annot(s->type, true);
-		if (s->bitfield) {
-			printf(", bitfield : ");
-			expr_print1(s->bitfield, true);
+		if (self->print_type_annot) {
+			if (s->name)
+				printf("// vardecl: %s, type: ", s->name);
+			else
+				printf("// vardecl: /* unnamed */, type: ");
+			type_print_annot(self, s->type, true);
+			if (s->bitfield) {
+				printf(", bitfield : ");
+				expr_print1(self, s->bitfield, true);
+			}
+			printf("\n");
+			print_level(level);
 		}
-		printf("\n");
-		print_level(level);
 		if (s->ext.c11_alignas) {
 			printf("_Alignas(");
 			if (s->ext.c11_alignas->type == EXPR_ALIGNOF) {
 				ExprALIGNOF *e = (ExprALIGNOF *) (s->ext.c11_alignas);
-				type_print_vardecl(0, e->t, "", false);
+				type_print_vardecl(self, 0, e->t, "", false);
 			} else {
-				expr_print(s->ext.c11_alignas, false);
+				expr_print(self, s->ext.c11_alignas, false);
 			}
 			printf(") ");
 		}
-		type_print_vardecl(s->flags, s->type, s->name, false);
+		type_print_vardecl(self, s->flags, s->type, s->name, false);
 		if (s->bitfield) {
 			printf(" : ");
-			expr_print1(s->bitfield, false);
+			expr_print1(self, s->bitfield, false);
 		}
 		if (s->ext.gcc_asm_name) {
 			printf(" __asm__(\"");
@@ -1096,21 +1105,23 @@ static void stmt_print(Stmt *h, int level)
 		}
 		if (s->ext.gcc_attribute) {
 			printf(" ");
-			attrs_print(s->ext.gcc_attribute);
+			attrs_print(self, s->ext.gcc_attribute);
 		}
 		if (s->init) {
 			printf(" = ");
-			expr_print2(s->init, false);
+			expr_print2(self, s->init, false);
 		}
 		printf(";\n");
 		break;
 	}
 	case STMT_TYPEDEF: {
 		StmtTYPEDEF *s = (StmtTYPEDEF *) h;
-		printf("// typedef: %s, type: ", s->name);
-		type_print_annot(s->type, true);
-		printf("\n");
-		print_level(level);
+		if (self->print_type_annot) {
+			printf("// typedef: %s, type: ", s->name);
+			type_print_annot(self, s->type, true);
+			printf("\n");
+			print_level(level);
+		}
 		if (s->name) {
 			if (strcmp(s->name, "_Float32") == 0 ||
 			    strcmp(s->name, "_Float64") == 0 ||
@@ -1119,10 +1130,10 @@ static void stmt_print(Stmt *h, int level)
 				printf("// ");
 		}
 		printf("typedef ");
-		type_print_vardecl(0, s->type, s->name, false);
+		type_print_vardecl(self, 0, s->type, s->name, false);
 		if (s->ext.gcc_attribute) {
 			printf(" ");
-			attrs_print(s->ext.gcc_attribute);
+			attrs_print(self, s->ext.gcc_attribute);
 		}
 		printf(";\n");
 		break;
@@ -1132,14 +1143,14 @@ static void stmt_print(Stmt *h, int level)
 		Stmt *p;
 		int i;
 		avec_foreach(&s->items, p, i) {
-			stmt_print(p, level);
+			stmt_print(self, p, level);
 		}
 		break;
 	}
 	case STMT_GOTOADDR: {
 		StmtGOTOADDR *s = (StmtGOTOADDR *) h;
 		printf("goto ");
-		expr_print(s->expr, false);
+		expr_print(self, s->expr, false);
 		printf(";\n");
 		break;
 	}
@@ -1151,11 +1162,11 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_CASERANGE: {
 		StmtCASERANGE *s = (StmtCASERANGE *) h;
 		printf("case ");
-		expr_print1(s->low, false);
+		expr_print1(self, s->low, false);
 		printf(" ... ");
-		expr_print1(s->high, false);
+		expr_print1(self, s->high, false);
 		printf(":\n");
-		stmt_print(s->stmt, level + 1);
+		stmt_print(self, s->stmt, level + 1);
 		break;
 	}
 	case STMT_ASM: {
@@ -1187,7 +1198,7 @@ static void stmt_print(Stmt *h, int level)
 			printf("\"");
 			print_quoted(oper->constraint, strlen(oper->constraint));
 			printf("\" (");
-			expr_print(oper->variable, false);
+			expr_print(self, oper->variable, false);
 			printf(")");
 		}
 		printf(" : ");
@@ -1198,7 +1209,7 @@ static void stmt_print(Stmt *h, int level)
 			printf("\"");
 			print_quoted(oper->constraint, strlen(oper->constraint));
 			printf("\" (");
-			expr_print(oper->variable, false);
+			expr_print(self, oper->variable, false);
 			printf(")");
 		}
 		printf(" : ");
@@ -1223,7 +1234,7 @@ static void stmt_print(Stmt *h, int level)
 	case STMT_STATICASSERT: {
 		StmtSTATICASSERT *s = (StmtSTATICASSERT *) h;
 		printf("_Static_assert(");
-		expr_print2(s->expr, false);
+		expr_print2(self, s->expr, false);
 		if (s->errmsg) {
 			printf(", \"");
 			print_quoted(s->errmsg, strlen(s->errmsg));
@@ -1237,11 +1248,38 @@ static void stmt_print(Stmt *h, int level)
 	}
 }
 
-void print_translation_unit(StmtBLOCK *s)
+void printer_print_translation_unit(Printer *self, StmtBLOCK *s)
 {
 	Stmt *p;
 	int i;
 	avec_foreach(&s->items, p, i) {
-		stmt_print(p, 0);
+		stmt_print(self, p, 0);
 	}
+}
+
+void printer_set_print_type_annot(Printer *p, bool b)
+{
+	p->print_type_annot = b;
+}
+
+static void printer_init(Printer *p)
+{
+	p->print_type_annot = false;
+}
+
+static void printer_free(Printer *p)
+{
+}
+
+Printer *printer_new()
+{
+	Printer *self = malloc(sizeof(Printer));
+	printer_init(self);
+	return self;
+}
+
+void printer_delete(Printer *p)
+{
+	printer_free(p);
+	free(p);
 }

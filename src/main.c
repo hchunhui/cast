@@ -378,7 +378,9 @@ static int main1(const char *file)
 #ifdef __CAST_MANAGED__
 		translation_unit = CALL_MANAGED(elim_unused, ctx, translation_unit);
 #endif
-		print_translation_unit(translation_unit);
+		Printer *pt = printer_new();
+		printer_print_translation_unit(pt, translation_unit);
+		printer_delete(pt);
 	} else {
 		fprintf(stderr, "%s:%d: syntax error\n",
 			lexer_report_path(l),
