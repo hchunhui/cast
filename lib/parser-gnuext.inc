@@ -24,6 +24,7 @@ static const char *const gcc_builtin_types[] = {
 	"_Float64", "_Float64x",
 	"_Float128", "_Float128x",
 	"__int128_t", "__uint128_t",
+	"__float80", "__float128",
 	NULL
 };
 
