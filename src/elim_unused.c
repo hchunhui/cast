@@ -49,12 +49,13 @@ static void mark_type(State *st, Type *type)
 		mark_type(st, ((TypeFUN *) type)->rt);
 		break;
 	}
-	case TYPE_TYPEDEF:
+	case TYPE_TYPEDEF: {
 		TypeTYPEDEF *t = (TypeTYPEDEF *) type;
 		st->progress = st->progress ||
 			map_get(&st->symbol_set, t->name) == NULL;
 		map_set(&st->symbol_set, t->name, 1);
 		break;
+	}
 	case TYPE_STRUCT: {
 		TypeSTRUCT *t = (TypeSTRUCT *) type;
 		if (t->tag) {
