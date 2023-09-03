@@ -298,10 +298,12 @@ static int lex_punct(Lexer *l)
 			return '.';
 		}
 	case ':':
-		// : :>
+		// : :> ::
 		N; d = P;
 		if (d == '>') {
 			N; return ']';
+		} else if (d == ':') {
+			N; return TOK_COL2;
 		}
 		return c;
 	case '~':

@@ -109,6 +109,18 @@ static Stmt *parse_stmt_gnu_label(Parser *p)
 	return l;
 }
 
+static int match_col(Parser *p, int *col)
+{
+	if (*col == 0) {
+		if (match(p, ':')) {
+			*col = 1;
+		} else if (match(p, TOK_COL2)) {
+			*col = 2;
+		}
+	}
+	return *col;
+}
+
 static Stmt *parse_stmt_gnu_asm(Parser *p)
 {
 	unsigned int flags = 0;
@@ -127,8 +139,9 @@ static Stmt *parse_stmt_gnu_asm(Parser *p)
 	F(P == TOK_STRING_CST);
 	const char *content = get_and_next(p);
 	StmtASM *s = stmtASM(flags, content);
-	if (match(p, ':')) {
-		if (P == '[' || P == TOK_STRING_CST) {
+	int col = 0;
+	if (match_col(p, &col)) {
+		if (col == 1 && (P == '[' || P == TOK_STRING_CST)) {
 			do {
 				ASMOper oper = (ASMOper) {};
 				if (match(p, '[')) {
@@ -144,8 +157,9 @@ static Stmt *parse_stmt_gnu_asm(Parser *p)
 				stmtASM_append_output(s, oper);
 			} while (match(p, ','));
 		}
-		if (match(p, ':')) {
-			if (P == '[' || P == TOK_STRING_CST) {
+		col--;
+		if (match_col(p, &col)) {
+			if (col == 1 && (P == '[' || P == TOK_STRING_CST)) {
 				do {
 					ASMOper oper = (ASMOper) {};
 					if (match(p, '[')) {
@@ -161,28 +175,32 @@ static Stmt *parse_stmt_gnu_asm(Parser *p)
 					stmtASM_append_input(s, oper);
 				} while (match(p, ','));
 			}
-			if (match(p, ':')) {
+			col--;
+			if (match_col(p, &col)) {
 				const char *cl;
-				if (P == TOK_STRING_CST) {
+				if (col == 1 && P == TOK_STRING_CST) {
 					do {
 						F(P == TOK_STRING_CST);
 						cl = get_and_next(p);
 						stmtASM_append_clobber(s, cl);
 					} while (match(p, ','));
 				}
-				if (match(p, ':')) {
+				col--;
+				if (match_col(p, &col)) {
 					const char *cl;
-					if (P == TOK_IDENT) {
+					if (col == 1 && P == TOK_IDENT) {
 						do {
 							F(P == TOK_IDENT);
 							cl = get_and_next(p);
 							stmtASM_append_gotolabels(s, cl);
 						} while (match(p, ','));
 					}
+					col--;
 				}
 			}
 		}
 	}
+	F(col == 0);
 	F(match(p, ')'));
 	F(match(p, ';'));
 	return (Stmt *) s;
