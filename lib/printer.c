@@ -269,7 +269,7 @@ static void type_print_annot(Printer *self, Type *type, bool simple)
 				struct EnumPair_ *p;
 				int i;
 				avec_foreach_ptr(&(t->list->items), p, i) {
-					printf("%s", p->id);
+					printf("\t%s", p->id);
 					if (p->attr) {
 						printf(" ");
 						attrs_print(self, p->attr);
@@ -325,7 +325,7 @@ static void type_print_declarator1(Printer *self, Type *type)
 		return;
 	case TYPE_PTR:
 		type_print_declarator1(self, ((TypePTR *) type)->t);
-		printf("(* ");
+		printf("(*");
 		type_flags_print(type);
 		return;
 	case TYPE_ARRAY:
@@ -622,12 +622,12 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 			ExprUOP *ea = (ExprUOP *) (e->a);
 			if (ea->op == EXPR_OP_DEREF) {
 				expr_print1(self, ea->e, simple);
-				printf(" -> %s", e->id);
+				printf("->%s", e->id);
 				break;
 			}
 		}
 		expr_print1(self, e->a, simple);
-		printf(" . %s", e->id);
+		printf(".%s", e->id);
 		break;
 	}
 	case EXPR_CALL: {
@@ -650,7 +650,10 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 			printf("["); expr_print(self, e->b, simple); printf("]");
 		} else {
 			expr_print1(self, e->a, simple);
-			printf(" %s ", bopname(e->op));
+			if (e->op == EXPR_OP_COMMA)
+				printf(", ");
+			else
+				printf(" %s ", bopname(e->op));
 			expr_print1(self, e->b, simple);
 		}
 		break;
@@ -658,21 +661,21 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 	case EXPR_UOP: {
 		ExprUOP *e = (ExprUOP *) h;
 		switch (e->op) {
-		case EXPR_OP_NEG: printf("- "); expr_print1(self, e->e, simple); break;
-		case EXPR_OP_POS: printf("+ "); expr_print1(self, e->e, simple); break;
-		case EXPR_OP_NOT: printf("! "); expr_print1(self, e->e, simple); break;
-		case EXPR_OP_BNOT: printf("~ "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_NEG: printf("-"); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_POS: printf("+"); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_NOT: printf("!"); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_BNOT: printf("~"); expr_print1(self, e->e, simple); break;
 
-		case EXPR_OP_ADDROF: printf("& "); expr_print1(self, e->e, simple); break;
-		case EXPR_OP_DEREF: printf("* "); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_ADDROF: printf("&"); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_DEREF: printf("*"); expr_print1(self, e->e, simple); break;
 
-		case EXPR_OP_PREINC: printf("++ "); expr_print1(self, e->e, simple); break;
-		case EXPR_OP_POSTINC: expr_print1(self, e->e, simple); printf(" ++"); break;
-		case EXPR_OP_PREDEC: printf("-- "); expr_print1(self, e->e, simple); break;
-		case EXPR_OP_POSTDEC: expr_print1(self, e->e, simple); printf(" --"); break;
+		case EXPR_OP_PREINC: printf("++"); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_POSTINC: expr_print1(self, e->e, simple); printf("++"); break;
+		case EXPR_OP_PREDEC: printf("--"); expr_print1(self, e->e, simple); break;
+		case EXPR_OP_POSTDEC: expr_print1(self, e->e, simple); printf("--"); break;
 
 		case EXPR_OP_ADDROFLABEL:
-			printf("&& %s", ((ExprIDENT * )e->e)->id); break;
+			printf("&&%s", ((ExprIDENT * )e->e)->id); break;
 		default: abort();
 		}
 		break;
@@ -729,11 +732,12 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 	}
 	case EXPR_INIT: {
 		ExprINIT *e = (ExprINIT *) h;
-		printf("{");
+		printf("{\n");
 		ExprINITItem p;
 		int i;
 		avec_foreach(&e->items, p, i) {
-			if (i) printf(", ");
+			if (i) printf(",\n");
+			printf("\t");
 			if (p.designator) {
 				Designator *d = p.designator;
 				while (d) {
@@ -760,7 +764,7 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 			}
 			expr_print2(self, p.value, simple);
 		}
-		printf("}");
+		printf("\n}");
 		break;
 	}
 	case EXPR_VASTART: {
@@ -848,7 +852,7 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 static void print_level(int level)
 {
 	for (int i = 0; i < level; i++)
-		printf("    ");
+		printf("\t");
 }
 
 static void stmt_printb(Printer *self, Stmt *h, int level)
@@ -910,7 +914,11 @@ static void stmt_print(Printer *self, Stmt *h, int level)
 		if (s->body2) {
 			print_level(level);
 			printf("else\n");
-			stmt_printb(self, s->body2, level + 1);
+			if (s->body2->type == STMT_IF) {
+				stmt_printb(self, s->body2, level);
+			} else {
+				stmt_printb(self, s->body2, level + 1);
+			}
 		}
 		printf("\n");
 		break;
