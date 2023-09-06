@@ -91,6 +91,23 @@ static bool expr_isprim(Expr *h)
 	}
 }
 
+static bool expr_ishigh(Expr *h)
+{
+	switch (h->type) {
+	case EXPR_BOP: {
+		int op = ((ExprBOP *) h)->op;
+		if (op == EXPR_OP_IDX) {
+			return true;
+		}
+		break;
+	}
+	case EXPR_MEM:
+	case EXPR_CALL:
+		return true;
+	}
+	return false;
+}
+
 static void expr_print(Printer *self, Expr *h, bool simple);
 static void expr_print1(Printer *self, Expr *h, bool simple)
 {
@@ -108,6 +125,28 @@ static void expr_print2(Printer *self, Expr *h, bool simple)
 		lp(); expr_print(self, h, simple); rp();
 	} else {
 		expr_print(self, h, simple);
+	}
+}
+
+static void expr_print_assign(Printer *self, Expr *h, bool simple)
+{
+	int op = ((ExprBOP *) h)->op;
+	if (h->type == EXPR_BOP &&
+	    (op == EXPR_OP_COMMA ||
+	     op >= EXPR_OP_ASSIGN && op <= EXPR_OP_ASSIGNBSHR)) {
+		lp(); expr_print(self, h, simple); rp();
+	} else {
+		expr_print(self, h, simple);
+	}
+}
+
+static void expr_print_bop(Printer *self, Expr *h, bool simple)
+{
+	if (expr_isprim(h) || h->type == EXPR_INIT || expr_ishigh(h) ||
+	    h->type == EXPR_UOP) {
+		expr_print(self, h, simple);
+	} else {
+		lp(); expr_print(self, h, simple); rp();
 	}
 }
 
@@ -323,15 +362,23 @@ static void type_print_declarator1(Printer *self, Type *type)
 	case TYPE_FUN:
 		type_print_declarator1(self, ((TypeFUN *) type)->rt);
 		return;
-	case TYPE_PTR:
-		type_print_declarator1(self, ((TypePTR *) type)->t);
-		printf("(*");
+	case TYPE_PTR: {
+		Type *nt = ((TypePTR *) type)->t;
+		type_print_declarator1(self, nt);
+		if (nt->type == TYPE_FUN || nt->type == TYPE_PTR || nt->type == TYPE_ARRAY)
+			printf("(*");
+		else
+			printf("*");
 		type_flags_print(type);
 		return;
-	case TYPE_ARRAY:
+	}
+	case TYPE_ARRAY: {
+		Type *nt = ((TypeARRAY *) type)->t;
 		type_print_declarator1(self, ((TypeARRAY *) type)->t);
-		printf("(");
+		if (nt->type == TYPE_FUN || nt->type == TYPE_PTR || nt->type == TYPE_ARRAY)
+			printf("(");
 		return;
+	}
 	default:
 		return;
 	}
@@ -360,11 +407,15 @@ static void type_print_declarator2(Printer *self, Type *type)
 		printf(")");
 		type_print_declarator2(self, ((TypeFUN *) type)->rt);
 		return;
-	case TYPE_PTR:
-		printf(")");
-		type_print_declarator2(self, ((TypePTR *) type)->t);
+	case TYPE_PTR: {
+		Type *nt = ((TypePTR *) type)->t;
+		if (nt->type == TYPE_FUN || nt->type == TYPE_PTR || nt->type == TYPE_ARRAY)
+			printf(")");
+		type_print_declarator2(self, nt);
 		return;
-	case TYPE_ARRAY:
+	}
+	case TYPE_ARRAY: {
+		Type *nt = ((TypeARRAY *) type)->t;
 		printf("[");
 		type_flags_print(type);
 		if (((TypeARRAY *) type)->n) {
@@ -372,9 +423,13 @@ static void type_print_declarator2(Printer *self, Type *type)
 				printf("static ");
 			expr_print1(self, ((TypeARRAY *) type)->n, false);
 		}
-		printf("])");
-		type_print_declarator2(self, ((TypeARRAY *) type)->t);
+		if (nt->type == TYPE_FUN || nt->type == TYPE_PTR || nt->type == TYPE_ARRAY)
+			printf("])");
+		else
+			printf("]");
+		type_print_declarator2(self, nt);
 		return;
+	}
 	default:
 		return;
 	}
@@ -648,13 +703,17 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 		if (e->op == EXPR_OP_IDX) {
 			expr_print1(self, e->a, simple);
 			printf("["); expr_print(self, e->b, simple); printf("]");
+		} else if (e->op >= EXPR_OP_ASSIGN && e->op <= EXPR_OP_ASSIGNBSHR) {
+			expr_print_assign(self, e->a, simple);
+			printf(" %s ", bopname(e->op));
+			expr_print_assign(self, e->b, simple);
 		} else {
-			expr_print1(self, e->a, simple);
+			expr_print_bop(self, e->a, simple);
 			if (e->op == EXPR_OP_COMMA)
 				printf(", ");
 			else
 				printf(" %s ", bopname(e->op));
-			expr_print1(self, e->b, simple);
+			expr_print_bop(self, e->b, simple);
 		}
 		break;
 	}
@@ -1029,7 +1088,7 @@ static void stmt_print(Printer *self, Stmt *h, int level)
 		StmtRETURN *s = (StmtRETURN *) h;
 		if (s->expr) {
 			printf("return ");
-			expr_print1(self, s->expr, false);
+			expr_print(self, s->expr, false);
 			printf(";\n");
 		} else {
 			printf("return;\n");
