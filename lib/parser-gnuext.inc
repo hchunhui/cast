@@ -226,6 +226,7 @@ static bool parse_gnu_attribute1(Parser *p, Attribute *a)
 
 static bool parse_gnu_attribute(Parser *p, Attribute **pa)
 {
+	Attribute *head = NULL;
 	while (match(p, TOK_ATTRIBUTE)) {
 		F(match(p, '(')); F(match(p, '('));
 		bool flag = true;
@@ -237,8 +238,8 @@ static bool parse_gnu_attribute(Parser *p, Attribute **pa)
 				Attribute *a = __new(Attribute);
 				a->name = get_and_next(p);
 				avec_init(&a->args);
-				a->next = *pa;
-				*pa = a;
+				a->next = head;
+				head = a;
 				F(parse_gnu_attribute1(p, a));
 			} else if (tok_type == ',') {
 				N;
@@ -249,6 +250,16 @@ static bool parse_gnu_attribute(Parser *p, Attribute **pa)
 			}
 		}
 		F(match(p, ')')); F(match(p, ')'));
+	}
+
+	while (*pa) {
+	      pa = &(*pa)->next;
+	}
+	while (head) {
+		Attribute *t = head->next;
+		head->next = *pa;
+		*pa = head;
+		head = t;
 	}
 	return true;
 }
