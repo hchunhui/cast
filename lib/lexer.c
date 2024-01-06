@@ -359,6 +359,15 @@ static unsigned int lex_escape(Lexer *l)
 				N; c = P;
 			}
 			return d % 256;
+		case '(': case '{': case '[': case '%':
+		/* gcc extension
+		   comment from gcc/libcpp/charset.c:
+		   '\(', etc, can be used at the beginning of a line in a long
+		   string split onto multiple lines with \-newline, to prevent
+		   Emacs or other text editors from getting confused.  '\%' can
+		   be used to prevent SCCS from mangling printf format strings.
+		*/
+			N; return c;
 		default: return 256;
 		}
 	}
