@@ -19,7 +19,20 @@ static void mark_type(State *st, Type *type);
 static void mark_attrs(State *st, Attribute *attrs)
 {
 	for (Attribute *a = attrs; a; a = a->next) {
-		if (a->args.length) {
+		if (strcmp(a->name, "__alias__") == 0 ||
+		    strcmp(a->name, "alias") == 0) {
+			Expr *p;
+			int i;
+			avec_foreach(&a->args, p, i) {
+				if (p->type == EXPR_STRING_CST) {
+					ExprSTRING_CST *s = (ExprSTRING_CST *) p;
+					map_set(&st->symbol_set, s->v, 1);
+				} else {
+					fprintf(stderr,
+						"elim_unused: bad alias\n");
+				}
+			}
+		} else if (a->args.length) {
 			Expr *p;
 			int i;
 			avec_foreach(&a->args, p, i) {
@@ -400,23 +413,42 @@ static void mark_stmt(State *st, Stmt *h)
 	}
 }
 
+static bool attr_is_good(Attribute *attr)
+{
+	static const char *goodattrs[] = {
+		"__access__", "__alloc_align__", "__alloc_size__",
+		"__const__", "__deprecated__", "__format__",
+		"__leaf__", "__malloc__", "__noreturn__",
+		"__nonnull__", "__nothrow__", "__pure__",
+		"__warn_unused_result__",
+		NULL
+	};
+	for (; attr; attr = attr->next) {
+		bool matched = false;
+		for (const char **key = goodattrs; *key; key++) {
+			if (strcmp(attr->name, *key) == 0) {
+				matched = true;
+				break;
+			}
+		}
+		if (!matched)
+			return false;
+	}
+	return true;
+}
+
 static void mark_topstmt(State *st, Stmt *h)
 {
 	switch (h->type) {
 	case STMT_FUNDECL: {
 		StmtFUNDECL *s = (StmtFUNDECL *) h;
-		if (s->body) {
+		if (s->body && !(s->flags & DFLAG_STATIC) ||
+		    !attr_is_good(s->ext.gcc_attribute)) {
 			if (s->name)
 				map_set(&st->symbol_set, s->name, 1);
 			mark_type(st, (Type *) s->type);
-			mark_stmt(st, (Stmt *) s->body);
-			if (s->ext.gcc_attribute)
-				mark_attrs(st, s->ext.gcc_attribute);
-		} else if (s->ext.gcc_attribute || s->ext.gcc_asm_name ||
-			   s->ext.c11_alignas) {
-			if (s->name)
-				map_set(&st->symbol_set, s->name, 1);
-			mark_type(st, (Type *) s->type);
+			if (s->body)
+				mark_stmt(st, (Stmt *) s->body);
 			if (s->ext.gcc_attribute)
 				mark_attrs(st, s->ext.gcc_attribute);
 		}
@@ -519,6 +551,8 @@ static void mark_topstmt2(State *st, Stmt *h)
 		if (s->name) {
 			if (map_get(&st->symbol_set, s->name)) {
 				mark_type(st, (Type *) s->type);
+				if (s->body)
+					mark_stmt(st, (Stmt *) s->body);
 				if (s->ext.gcc_attribute)
 					mark_attrs(st, s->ext.gcc_attribute);
 			}
