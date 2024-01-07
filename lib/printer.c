@@ -1126,6 +1126,12 @@ static void stmt_print(Printer *self, Stmt *h, int level)
 			print_level(level);
 		}
 		type_print_fundecl(self, s->flags, s->type, s->args, s->name, s->ext.gcc_attribute);
+		if (s->ext.gcc_asm_name) {
+			printf(" __asm__(\"");
+			int len = strlen(s->ext.gcc_asm_name);
+			print_quoted(s->ext.gcc_asm_name, len);
+			printf("\")");
+		}
 		if (s->body) {
 			printf("\n");
 			stmt_print(self, &s->body->h, level);
