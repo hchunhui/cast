@@ -412,11 +412,13 @@ static void mark_topstmt(State *st, Stmt *h)
 			mark_stmt(st, (Stmt *) s->body);
 			if (s->ext.gcc_attribute)
 				mark_attrs(st, s->ext.gcc_attribute);
-		} else if (!(s->flags & DFLAG_EXTERN) &&
-			   (s->ext.gcc_attribute || s->ext.gcc_asm_name ||
-			    s->ext.c11_alignas)) {
+		} else if (s->ext.gcc_attribute || s->ext.gcc_asm_name ||
+			   s->ext.c11_alignas) {
 			if (s->name)
 				map_set(&st->symbol_set, s->name, 1);
+			mark_type(st, (Type *) s->type);
+			if (s->ext.gcc_attribute)
+				mark_attrs(st, s->ext.gcc_attribute);
 		}
 		break;
 	}
