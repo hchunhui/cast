@@ -15,6 +15,9 @@ boot:
 	${MAKE} clean
 	${MAKE} VARIANT=managed
 	${MAKE} localinstall
+	${MAKE} clean
+	${MAKE} VARIANT=managed
+	${MAKE} localinstall
 
 localinstall:
 	cp src/cast-pp wrapper/
