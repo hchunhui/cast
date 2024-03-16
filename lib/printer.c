@@ -102,6 +102,7 @@ static bool expr_ishigh(Expr *h)
 		break;
 	}
 	case EXPR_MEM:
+	case EXPR_PMEM:
 	case EXPR_CALL:
 		return true;
 	}
@@ -673,16 +674,14 @@ static void expr_print(Printer *self, Expr *h, bool simple)
 	}
 	case EXPR_MEM: {
 		ExprMEM *e = (ExprMEM *) h;
-		if (e->a->type == EXPR_UOP) {
-			ExprUOP *ea = (ExprUOP *) (e->a);
-			if (ea->op == EXPR_OP_DEREF) {
-				expr_print1(self, ea->e, simple);
-				printf("->%s", e->id);
-				break;
-			}
-		}
 		expr_print1(self, e->a, simple);
 		printf(".%s", e->id);
+		break;
+	}
+	case EXPR_PMEM: {
+		ExprPMEM *e = (ExprPMEM *) h;
+		expr_print1(self, e->a, simple);
+		printf("->%s", e->id);
 		break;
 	}
 	case EXPR_CALL: {

@@ -24,6 +24,7 @@ EXPR(BOOL_CST,   _Bool, v)
 
 EXPR(IDENT,      const char *, id)
 EXPR(MEM,        Expr *, a, const char *, id)
+EXPR(PMEM,       Expr *, a, const char *, id)
 //EXPR(CALL,       Expr *, e, ...)
 
 EXPR(UOP,        ExprUnOp, op, Expr *, e)

@@ -347,10 +347,9 @@ static Expr *parse_postfix_expr_post(Parser *p, Expr *e, int prec) // 2
 			}
 			break;
 		}
-		case TOK_PMEM: { // -
+		case TOK_PMEM: {
 			N; if (P == TOK_IDENT) {
-				e = exprMEM(exprUOP(EXPR_OP_DEREF, e),
-					    get_and_next(p));
+				e = exprPMEM(e, get_and_next(p));
 			} else {
 				return NULL;
 			}
