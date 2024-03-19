@@ -401,10 +401,14 @@ static void type_print_declarator2(Printer *self, Type *type)
 			type_print_declarator1(self, p);
 			type_print_declarator2(self, p);
 		}
-		if (((TypeFUN *) type)->at.length == 0)
-			printf("void");
-		if (((TypeFUN *) type)->va_arg)
-			printf(", ...");
+		TypeFUN *tf = (TypeFUN *) type;
+		if (tf->at.length == 0) {
+			if (!tf->va_arg)
+				printf("void");
+		} else {
+			if (tf->va_arg)
+				printf(", ...");
+		}
 		printf(")");
 		type_print_declarator2(self, ((TypeFUN *) type)->rt);
 		return;
