@@ -526,6 +526,12 @@ static bool check_nested(Stmt *p)
 				TypeSTRUCT *ts = (TypeSTRUCT *) t;
 				if (ts->tag)
 					return true;
+				Stmt *q;
+				int i;
+				avec_foreach(&(ts->decls->items), q, i) {
+					if (check_nested(q))
+						return true;
+				}
 			} else if (t->type == TYPE_ENUM) {
 				TypeENUM *te = (TypeENUM *) t;
 				if (te->tag)
