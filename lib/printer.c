@@ -300,6 +300,10 @@ static void type_print_annot(Printer *self, Type *type, bool simple)
 	case TYPE_ENUM: {
 		TypeENUM *t = (TypeENUM *) type;
 		printf("enum");
+		if (t->attrs) {
+			printf(" ");
+			attrs_print(self, t->attrs);
+		}
 		if (t->tag) printf(" %s", t->tag);
 		if (t->list) {
 			if (simple) {
