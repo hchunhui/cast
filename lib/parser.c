@@ -1060,6 +1060,7 @@ static void type_set_tflags(Type *t, unsigned int tflags)
 	case TYPE_STRUCT:  (((TypeSTRUCT *) t)->flags) |= tflags; break;
 	case TYPE_ENUM: (((TypeENUM *) t)->flags) |= tflags; break;
 	case TYPE_TYPEOF: (((TypeTYPEOF *) t)->flags) |= tflags; break;
+	case TYPE_TYPEOFUNQUAL: (((TypeTYPEOFUNQUAL *) t)->flags) |= tflags; break;
 	case TYPE_AUTO: (((TypeAUTO *) t)->flags) |= tflags; break;
 	default:
 		assert(false);
@@ -1252,7 +1253,9 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 			pd->type = typeENUM(tag, list, tflags, attrs);
 			break;
 		}
-		case TOK_TYPEOF: {
+		case TOK_TYPEOF:
+		case TOK_TYPEOFUNQUAL: {
+			bool is_unqual = P == TOK_TYPEOFUNQUAL;
 			N; Expr *e;
 			F(match(p, '('));
 			Type *t = parse_type(p);
@@ -1264,7 +1267,10 @@ static bool parse_type1_(Parser *p, Type **pbtype, Declarator *pd, bool implicit
 			F(e = parse_expr(p));
 			F(match(p, ')'));
 			tflags |= parse_type_qualifier(p);
-			pd->type = typeTYPEOF(e, tflags);
+			if (is_unqual)
+				pd->type = typeTYPEOFUNQUAL(e, tflags);
+			else
+				pd->type = typeTYPEOF(e, tflags);
 			break;
 		}
 		case TOK_AUTOTYPE: {

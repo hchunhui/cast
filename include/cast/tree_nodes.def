@@ -8,6 +8,7 @@ TYPE(TYPEDEF, const char *, name, unsigned int, flags)
 TYPE(ENUM, const char *, tag, EnumList *, list, unsigned int, flags, Attribute *, attrs)
 
 TYPE(TYPEOF, Expr *, e, unsigned int, flags)
+TYPE(TYPEOFUNQUAL, Expr *, e, unsigned int, flags)
 TYPE(AUTO, unsigned int, flags)
 
 EXPR(INT_CST,    int, v)

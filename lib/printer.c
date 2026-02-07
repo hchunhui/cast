@@ -40,6 +40,7 @@ static void type_flags_print(Type *t)
 	case TYPE_STRUCT:  flags = ((TypeSTRUCT *) t)->flags; break;
 	case TYPE_ENUM: flags = ((TypeENUM *) t)->flags; break;
 	case TYPE_TYPEOF: flags = ((TypeTYPEOF *) t)->flags; break;
+	case TYPE_TYPEOFUNQUAL: flags = ((TypeTYPEOFUNQUAL *) t)->flags; break;
 	case TYPE_AUTO: flags = ((TypeAUTO *) t)->flags; break;
 	default:
 		assert(false);
@@ -334,6 +335,13 @@ static void type_print_annot(Printer *self, Type *type, bool simple)
 	case TYPE_TYPEOF: {
 		TypeTYPEOF *t = (TypeTYPEOF *) type;
 		printf("__typeof__(");
+		expr_print(self, t->e, simple);
+		printf(")");
+		break;
+	}
+	case TYPE_TYPEOFUNQUAL: {
+		TypeTYPEOFUNQUAL *t = (TypeTYPEOFUNQUAL *) type;
+		printf("__typeof_unqual__(");
 		expr_print(self, t->e, simple);
 		printf(")");
 		break;

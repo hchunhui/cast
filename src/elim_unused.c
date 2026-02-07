@@ -108,6 +108,11 @@ static void mark_type(State *st, Type *type)
 		mark_expr(st, t->e);
 		break;
 	}
+	case TYPE_TYPEOFUNQUAL: {
+		TypeTYPEOFUNQUAL *t = (TypeTYPEOFUNQUAL *) type;
+		mark_expr(st, t->e);
+		break;
+	}
 	case TYPE_AUTO:
 		break;
 	}
