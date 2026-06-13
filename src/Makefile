@@ -1,4 +1,5 @@
 TOPDIR = ..
+SUBMAKES = gen_wrapper.mk
 PROG = cast-pp
 CSRCS = main.c elim_unused.c
 OBJS += ${TOPDIR}/lib/libcast.a
