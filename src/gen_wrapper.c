@@ -36,6 +36,32 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 		case STMT_FUNDECL: {
 			StmtFUNDECL *s = (StmtFUNDECL *) p;
 			if (!s->body) {
+				Stmt *q;
+				int j;
+				StmtBLOCK *args = NULL;
+				if (s->args) {
+					char buf[16];
+					int ct = 0;
+
+					args = stmtBLOCK();
+					avec_foreach(&(s->args->items), q, j) {
+						StmtVARDECL *q1 = (StmtVARDECL *) q;
+						const char *name = q1->name;
+						if (!name || name[0] == '_' && name[1] == '_') {
+							sprintf(buf, "__a%d", ct++);
+							name = __new_cstring(buf);
+						}
+						stmtBLOCK_append(
+							args,
+							stmtVARDECL(q1->flags,
+								    name,
+								    q1->type,
+								    q1->init,
+								    q1->bitfield,
+								    q1->ext));
+					}
+				}
+
 				if (s->type->va_arg && s->args) {
 					fprintf(stderr, "warning: variadic function %s()\n",
 						s->name);
@@ -51,7 +77,7 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 					stmtBLOCK_append(
 						body,
 						stmtVARDECL(
-							DFLAG_STATIC, "f",
+							DFLAG_STATIC, "__f",
 							typePTR((Type *) typeVOID(0), 0),
 							NULL,
 							NULL,
@@ -65,14 +91,14 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 								WCK_NONE));
 					stmtBLOCK_append(
 						body,
-						stmtIF(exprUOP(EXPR_OP_NOT, exprIDENT("f")),
+						stmtIF(exprUOP(EXPR_OP_NOT, exprIDENT("__f")),
 						       stmtEXPR(
 							       exprBOP(EXPR_OP_ASSIGN,
-								       exprIDENT("f"),
+								       exprIDENT("__f"),
 								       (Expr *) call_dlsym)),
 						       NULL));
 					ExprCALL *call_apply = exprCALL(exprIDENT("__builtin_apply"));
-					exprCALL_append(call_apply, exprIDENT("f"));
+					exprCALL_append(call_apply, exprIDENT("__f"));
 					exprCALL_append(call_apply, exprIDENT("__args"));
 					exprCALL_append(call_apply, exprINT_CST(512));
 					stmtBLOCK_append(
@@ -91,41 +117,17 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 						stmtEXPR((Expr *) call_return));
 					Stmt *f = stmtFUNDECL(s->flags & ~DFLAG_EXTERN,
 							      s->name, s->type,
-							      s->args, body, s->ext);
+							      args, body, s->ext);
 					stmtBLOCK_append(out, f);
 					continue;
 				}
 
 				StmtBLOCK *body = stmtBLOCK();
-				StmtBLOCK *args = NULL;
-				Stmt *q;
-				int j;
-				if (s->args) {
-					char buf[16];
-					int ct = 0;
 
-					args = stmtBLOCK();
-					avec_foreach(&(s->args->items), q, j) {
-						StmtVARDECL *q1 = (StmtVARDECL *) q;
-						const char *name = q1->name;
-						if (!name) {
-							sprintf(buf, "__a%d", ct++);
-							name = __new_cstring(buf);
-						}
-						stmtBLOCK_append(
-							args,
-							stmtVARDECL(q1->flags,
-								    name,
-								    q1->type,
-								    q1->init,
-								    q1->bitfield,
-								    q1->ext));
-					}
-				}
 				stmtBLOCK_append(
 					body,
 					stmtVARDECL(DFLAG_STATIC,
-						    "f",
+						    "__f",
 						    typePTR((Type *) s->type, 0),
 						    NULL,
 						    NULL,
@@ -137,7 +139,7 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 							s->name,
 							strlen(s->name) + 1,
 							WCK_NONE));
-				ExprCALL *call_f = exprCALL(exprIDENT("f"));
+				ExprCALL *call_f = exprCALL(exprIDENT("__f"));
 				if (s->args) {
 					avec_foreach(&(args->items), q, j) {
 						StmtVARDECL *q1 = (StmtVARDECL *) q;
@@ -147,10 +149,10 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 				}
 				stmtBLOCK_append(
 					body,
-					stmtIF(exprUOP(EXPR_OP_NOT, exprIDENT("f")),
+					stmtIF(exprUOP(EXPR_OP_NOT, exprIDENT("__f")),
 					       stmtEXPR(
 						       exprBOP(EXPR_OP_ASSIGN,
-							       exprIDENT("f"),
+							       exprIDENT("__f"),
 							       (Expr *) call_dlsym)),
 					       NULL));
 				if (s->type->rt->type == TYPE_VOID) {
