@@ -16,7 +16,7 @@ static const char *__new_cstring(const char *s)
 	return str;
 }
 
-StmtBLOCK *wrap(StmtBLOCK *s)
+StmtBLOCK *wrap(StmtBLOCK *s, map_int_t *filter)
 {
 	StmtBLOCK *out = stmtBLOCK();
 	Stmt *p;
@@ -35,6 +35,8 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 		switch (p->type) {
 		case STMT_FUNDECL: {
 			StmtFUNDECL *s = (StmtFUNDECL *) p;
+			if (filter && map_get(filter, s->name) == NULL)
+				continue;
 			if (!s->body) {
 				Stmt *q;
 				int j;
@@ -177,8 +179,25 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 }
 END_MANAGED
 
-static int main1(const char *file)
+static int main1(const char *file, const char *namefile)
 {
+	map_int_t filter_set;
+	map_init(&filter_set);
+	if (namefile) {
+		FILE *fp = fopen(namefile, "r");
+		if (!fp) abort();
+		char buf[256];
+		buf[255] = 0;
+		while (fgets(buf, 255, fp)) {
+			int len = strlen(buf);
+			if (len) {
+				if (buf[len - 1] == '\n')
+					buf[len - 1] = 0;
+				map_set(&filter_set, buf, 1);
+			}
+		}
+	}
+
 	int ret = 0;
 	TextStream *ts = text_stream_new(file);
 	Lexer *l = lexer_new(ts);
@@ -189,7 +208,10 @@ static int main1(const char *file)
 	StmtBLOCK *translation_unit = CALL_MANAGED(parse_translation_unit, ctx, p);
 	if (translation_unit) {
 		fprintf(stderr, "cast: preprocessing %s\n", lexer_report_file(l));
-		StmtBLOCK *out = CALL_MANAGED(wrap, ctx, translation_unit);
+		map_int_t *pfilter = NULL;
+		if (namefile)
+			pfilter = &filter_set;
+		StmtBLOCK *out = CALL_MANAGED(wrap, ctx, translation_unit, pfilter);
 		Printer *pt = printer_new();
 		printer_print_translation_unit(pt, out);
 		printer_delete(pt);
@@ -205,10 +227,12 @@ static int main1(const char *file)
 	lexer_delete(l);
 	text_stream_delete(ts);
 	allocator_delete(a);
+	map_deinit(&filter_set);
 	return ret;
 }
 
 int main(int argc, char *argv[])
 {
-	return main1(argc == 1 ? "-" : argv[1]);
+	return main1(argc == 1 ? "-" : argv[1],
+		     argc > 2 ? argv[2] : NULL);
 }
