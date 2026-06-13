@@ -37,8 +37,62 @@ StmtBLOCK *wrap(StmtBLOCK *s)
 			StmtFUNDECL *s = (StmtFUNDECL *) p;
 			if (!s->body) {
 				if (s->type->va_arg && s->args) {
-					fprintf(stderr, "unable to wrap %s()\n",
+					fprintf(stderr, "warning: variadic function %s()\n",
 						s->name);
+					StmtBLOCK *body = stmtBLOCK();
+					stmtBLOCK_append(
+						body,
+						stmtVARDECL(
+							0, "__args",
+							typePTR((Type *) typeVOID(0), 0),
+							(Expr *) exprCALL(exprIDENT("__builtin_apply_args")),
+							NULL,
+							(Extension){}));
+					stmtBLOCK_append(
+						body,
+						stmtVARDECL(
+							DFLAG_STATIC, "f",
+							typePTR((Type *) typeVOID(0), 0),
+							NULL,
+							NULL,
+							(Extension){}));
+					ExprCALL *call_dlsym = exprCALL(exprIDENT("dlsym"));
+					exprCALL_append(call_dlsym, exprIDENT("__handle"));
+					exprCALL_append(call_dlsym,
+							exprSTRING_CST(
+								s->name,
+								strlen(s->name) + 1,
+								WCK_NONE));
+					stmtBLOCK_append(
+						body,
+						stmtIF(exprUOP(EXPR_OP_NOT, exprIDENT("f")),
+						       stmtEXPR(
+							       exprBOP(EXPR_OP_ASSIGN,
+								       exprIDENT("f"),
+								       (Expr *) call_dlsym)),
+						       NULL));
+					ExprCALL *call_apply = exprCALL(exprIDENT("__builtin_apply"));
+					exprCALL_append(call_apply, exprIDENT("f"));
+					exprCALL_append(call_apply, exprIDENT("__args"));
+					exprCALL_append(call_apply, exprINT_CST(512));
+					stmtBLOCK_append(
+						body,
+						stmtVARDECL(
+							0, "__res",
+							typePTR((Type *) typeVOID(0), 0),
+							(Expr *) call_apply,
+							NULL,
+							(Extension){}));
+
+					ExprCALL *call_return = exprCALL(exprIDENT("__builtin_return"));
+					exprCALL_append(call_return, exprIDENT("__res"));
+					stmtBLOCK_append(
+						body,
+						stmtEXPR((Expr *) call_return));
+					Stmt *f = stmtFUNDECL(s->flags & ~DFLAG_EXTERN,
+							      s->name, s->type,
+							      s->args, body, s->ext);
+					stmtBLOCK_append(out, f);
 					continue;
 				}
 
