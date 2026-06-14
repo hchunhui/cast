@@ -83,7 +83,7 @@ StmtBLOCK *wrap(StmtBLOCK *s, map_int_t *filter)
 							typePTR((Type *) typeVOID(0), 0),
 							NULL,
 							NULL,
-							(Extension){}));
+							s->ext));
 					ExprCALL *call_dlsym = exprCALL(exprIDENT("dlsym"));
 					exprCALL_append(call_dlsym, exprIDENT("__handle"));
 					exprCALL_append(call_dlsym,
@@ -133,7 +133,7 @@ StmtBLOCK *wrap(StmtBLOCK *s, map_int_t *filter)
 						    typePTR((Type *) s->type, 0),
 						    NULL,
 						    NULL,
-						    (Extension){}));
+						    s->ext));
 				ExprCALL *call_dlsym = exprCALL(exprIDENT("dlsym"));
 				exprCALL_append(call_dlsym, exprIDENT("__handle"));
 				exprCALL_append(call_dlsym,
